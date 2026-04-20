@@ -18,21 +18,34 @@ not because the logic belongs there, but because the template can't handle it.
 
 ```python
 # Django/Jinja2 — you end up doing this in the backend:
-produtos_filtrados = [p for p in produtos if p.estoque > 0]
-produtos_ordenados = sorted(produtos_filtrados, key=lambda p: p.preco * p.estoque)
+for p in produtos:
+    p['total'] = p['preco'] * p['estoque']   # create computed field
+produtos_filtrados = [p for p in produtos if p['estoque'] > 0]
+produtos_ordenados = sorted(produtos_filtrados, key=lambda p: p['total'])
 context['produtos'] = produtos_ordenados
 ```
 
-With Merlin, the template handles it:
+With Merlin, the template handles it — and updates PRODUTOS in-place:
 
 ```merlin
-#RESUMO[] = PRODUTOS | FILTER("@ESTOQUE 0 >") | ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) | SORT_BY("@TOTAL")
+PRODUTOS | FILTER("@ESTOQUE 0 >") | ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) | SORT_BY("@TOTAL") | ATUALIZA
+```
 
-// or multiline — same result:
-#RESUMO[] = PRODUTOS |
-    FILTER("@ESTOQUE 0 >") |
-    ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) |
-    SORT_BY("@TOTAL")
+And rendering is just as simple:
+
+```merlin
+// Jinja2/Tera way — explicit loop in template:
+{{%% #FOR PRODUTO in PRODUTOS %%}}
+    {{{{ HTML.MENU_CARD(PRODUTO) }}}}
+{{%% #END_FOR %%}}
+
+// Merlin pipeline — same result:
+{{{{ PRODUTOS | HTML.MENU_CARD }}}}
+
+// or without the prefix — Merlin resolves HTML.MENU_CARD automatically:
+{{{{ PRODUTOS | MENU_CARD }}}}
+// HTML.* and RESTAURANTE.* are priority namespaces in templates.
+// MENU_CARD resolves to HTML.MENU_CARD with no registration needed.
 ```
 
 ---
