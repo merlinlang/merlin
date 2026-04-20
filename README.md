@@ -34,12 +34,12 @@ PRODUTOS | FILTER("@ESTOQUE 0 >") | ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) | SORT
 And rendering is just as simple:
 
 ```merlin
-// Jinja2/Tera way — explicit loop in template:
+// Merlin — explicit loop in template:
 {{%% #FOR PRODUTO in PRODUTOS %%}}
     {{{{ HTML.MENU_CARD(PRODUTO) }}}}
 {{%% #END_FOR %%}}
 
-// Merlin pipeline — same result:
+// Merlin using pipeline — same result:
 {{{{ PRODUTOS | HTML.MENU_CARD }}}}
 
 // or without the prefix — Merlin resolves HTML.MENU_CARD automatically:
