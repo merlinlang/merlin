@@ -1,0 +1,641 @@
+//  ============================================================================================================  //
+//
+//       LIBRARY NAME  :  HTML
+//       MERLIN GLOBAL :  CORE
+//       FILE          :  templates/merlin/core_html.html
+//
+//       Generic HTML components — usable in any Merlin project.
+//       Load at startup:  load_modules(&mut calculator, db, lib_html_id).await
+//
+//       Modules in this file:
+//           HTML.PICTURE_RENDER_THUMB       — responsive image (thumbnail preferred)
+//           HTML.PICTURE_RENDER_IMAGEM      — responsive image (full size preferred)
+//           HTML.VIDEO_RENDER               — HTML5 video player
+//           HTML.SETA_DOWN                  — SVG down arrow
+//           HTML.SETA_UP                    — SVG up arrow
+//           HTML.MESSAGES_VIEW              — flash messages (success, error, warning)
+//           HTML.DIVS_TEMA_SILVER_E_ROUNDED — optional theme wrappers (open)
+//           HTML.FECHA_TEMA_SILVER_E_ROUNDED— optional theme wrappers (close)
+//           HTML.FRASE                      — styled phrase/quote block
+//           HTML.SHOW_HTML_TEXT             — escaped HTML text display
+//           HTML.GOOGLE_MAP                 — embedded Google Map iframe
+//           HTML.COLS_ANALISA_SIZE          — Bootstrap column calculator
+//           HTML.LIGHTBOX                   — lightbox overlay
+//           HTML.GALLERY_HOVER_FOTOS        — hover gallery with lightbox
+//           HTML.GALLERY_GRID_FOTOS         — responsive grid gallery
+//
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.PICTURE_RENDER_THUMB") ::
+
+%%%%
+    // HTML.PICTURE_RENDER_THUMB( foto )
+    // Renders a responsive image — thumbnail preferred, falls back to full image.
+    //
+    // Parameters (from stack):
+    //   foto  — dictionary with fields: IMAGEM_THUMB, IMAGEM, TITULO
+
+    #FOTO = &ULTIMA_PILHA
+%%%%
+
+    <picture>
+        {{%% #IF FOTO.IMAGEM_THUMB %%}}
+            <img loading="lazy" class="card-img-top rounded"
+                 src="/_cache_/media/{{{{ FOTO.IMAGEM_THUMB }}}}"
+                 alt="{{{{ FOTO.TITULO }}}}" style="width:100%">
+        {{%% #ELSE_IF FOTO.IMAGEM %%}}
+            <img loading="lazy" class="card-img-top rounded"
+                 src="/_cache_/media/{{{{ FOTO.IMAGEM }}}}"
+                 alt="{{{{ FOTO.TITULO }}}}" style="width:100%">
+        {{%% #ELSE %%}}
+            <img class="card-img-top rounded" src="" alt="" style="width:100%">
+        {{%% #END_IF %%}}
+    </picture>
+
+&END_MODULE()    //  HTML.PICTURE_RENDER_THUMB
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.PICTURE_RENDER_IMAGEM") ::
+
+%%%%
+    // HTML.PICTURE_RENDER_IMAGEM( foto )
+    // Renders a responsive image — full size preferred, falls back to thumbnail.
+    //
+    // Parameters (from stack):
+    //   foto  — dictionary with fields: IMAGEM, IMAGEM_THUMB, TITULO
+
+    #FOTO = &ULTIMA_PILHA
+%%%%
+
+    <picture>
+        {{%% #IF FOTO.IMAGEM %%}}
+            <img loading="lazy" class="card-img-top rounded"
+                 src="/_cache_/media/{{{{ FOTO.IMAGEM }}}}"
+                 alt="{{{{ FOTO.TITULO }}}}" style="max-width:1100px; width:100%">
+        {{%% #ELSE_IF FOTO.IMAGEM_THUMB %%}}
+            <img loading="lazy" class="card-img-top rounded"
+                 src="/_cache_/media/{{{{ FOTO.IMAGEM_THUMB }}}}"
+                 alt="{{{{ FOTO.TITULO }}}}" style="max-width:900px; width:100%">
+        {{%% #ELSE %%}}
+            <img class="card-img-top rounded" src="" alt="" style="width:100%">
+        {{%% #END_IF %%}}
+    </picture>
+
+&END_MODULE()    //  HTML.PICTURE_RENDER_IMAGEM
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.VIDEO_RENDER") ::
+
+%%%%
+    // HTML.VIDEO_RENDER( foto )
+    // Renders an HTML5 video player with optional MP4 fallback.
+    //
+    // Parameters (from stack):
+    //   foto  — dictionary with fields: VIDEO, VIDEO_MP4 (optional)
+
+    #FOTO = &ULTIMA_PILHA
+%%%%
+
+    <div class="col-12 mb-4 justify-content-center">
+        <div class="card mx-auto" style="max-width:1000px;">
+            <div class="card-body">
+                <div class="thumbnail">
+                    <video controls style="max-width:100%;">
+                        <source src="/media/{{{{ foto.video }}}}" type="video/mp4">
+                        {{%% #IF foto.video_mp4 %%}}
+                            <source src="/media/{{{{ foto.video_mp4 }}}}" type="video/mp4">
+                        {{%% #END_IF %%}}
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+
+&END_MODULE()    //  HTML.VIDEO_RENDER
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.SETA_DOWN") ::
+
+%%%%
+    // HTML.SETA_DOWN( size )
+    // SVG down arrow inside a circle.
+    //
+    // Parameters (from stack):
+    //   size  — SVG size in pixels (default: "36")
+
+    $SIZE = &ULTIMA_PILHA | default("36")
+%%%%
+
+    <svg xmlns="http://www.w3.org/2000/svg" width="{{{{SIZE}}}}" height="{{{{SIZE}}}}"
+         viewBox="0 0 100 100"
+         style="float:right; position:relative; top:-4px; left:-4px; cursor:pointer;">
+        <circle cx="50" cy="50" r="40" fill="none" stroke="black" stroke-width="8"/>
+        <path d="M50 25 L25 55 H75 V40 H55 V60 V75 Z" fill="black"/>
+    </svg>
+
+&END_MODULE()    //  HTML.SETA_DOWN
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.SETA_UP") ::
+
+%%%%
+    // HTML.SETA_UP( size )
+    // SVG up arrow inside a circle.
+    //
+    // Parameters (from stack):
+    //   size  — SVG size in pixels (default: "36")
+
+    $SIZE = &ULTIMA_PILHA | default("36")
+%%%%
+
+    <svg xmlns="http://www.w3.org/2000/svg" width="{{{{SIZE}}}}" height="{{{{SIZE}}}}"
+         viewBox="0 0 100 100"
+         style="float:right; position:relative; top:-4px; left:-4px; cursor:pointer;">
+        <circle cx="50" cy="50" r="40" fill="none" stroke="black" stroke-width="8"/>
+        <path d="M50 25 L25 55 H40 V75 H60 V55 H75 Z" fill="black"/>
+    </svg>
+
+&END_MODULE()    //  HTML.SETA_UP
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.MESSAGES_VIEW") ::
+
+%%%%
+    // HTML.MESSAGES_VIEW
+    // Renders flash messages from the Merlin context.
+    // No parameters — uses 'messages' from context directly.
+    //
+    // message.kind: "success" | "error" | "warning" | default
+    // message.text: message content
+%%%%
+
+    {{%% #IF messages %%}}
+        <div class="text-center">
+            {{%% #FOR message in messages %%}}
+                {{%% #MATCH message.kind %%}}
+                    "success" :: <div class="alert alert-success" style="display:inline-block;">{{{{ message.text }}}}</div>
+                    "error"   :: <div class="alert alert-danger"  style="display:inline-block;">{{{{ message.text }}}}</div>
+                    "warning" :: <div class="alert alert-warning" style="display:inline-block;">{{{{ message.text }}}}</div>
+                    default   :: <div class="alert alert-info"    style="display:inline-block;">{{{{ message.text }}}}</div>
+                {{%% #END_MATCH %%}}
+            {{%% #END_FOR %%}}
+        </div>
+        <br>
+    {{%% #END_IF %%}}
+
+&END_MODULE()    //  HTML.MESSAGES_VIEW
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.DIVS_TEMA_SILVER_E_ROUNDED") ::
+
+%%%%
+    // HTML.DIVS_TEMA_SILVER_E_ROUNDED
+    // Opens optional theme wrapper divs based on CONFIG_GLOBAL flags.
+    // Always pair with HTML.FECHA_TEMA_SILVER_E_ROUNDED.
+    //
+    // CONFIG_GLOBAL.TEMA_ROUNDED — adds rounded card theme
+    // CONFIG_GLOBAL.TEMA_SILVER  — adds silver theme
+%%%%
+
+    {{%% #IF CONFIG_GLOBAL.TEMA_ROUNDED %%}}
+        <div class="card-rounded-theme">
+    {{%% #END_IF %%}}
+    {{%% #IF CONFIG_GLOBAL.TEMA_SILVER %%}}
+        <div class="silver-theme">
+    {{%% #END_IF %%}}
+
+&END_MODULE()    //  HTML.DIVS_TEMA_SILVER_E_ROUNDED
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.FECHA_TEMA_SILVER_E_ROUNDED") ::
+
+%%%%
+    // HTML.FECHA_TEMA_SILVER_E_ROUNDED
+    // Closes optional theme wrapper divs opened by HTML.DIVS_TEMA_SILVER_E_ROUNDED.
+%%%%
+
+    {{%% #IF CONFIG_GLOBAL.TEMA_ROUNDED %%}}
+        </div>
+    {{%% #END_IF %%}}
+    {{%% #IF CONFIG_GLOBAL.TEMA_SILVER %%}}
+        </div>
+    {{%% #END_IF %%}}
+
+&END_MODULE()    //  HTML.FECHA_TEMA_SILVER_E_ROUNDED
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.FRASE") ::
+
+%%%%
+    // HTML.FRASE( frase formatada )
+    // Renders a styled phrase or quote block.
+    //
+    // Parameters (from stack, last pushed = first read):
+    //   formatada  — number: 1 = styled h2, 0 = plain text
+    //   frase      — string: the phrase content
+
+    @FORMATADA = &ULTIMA_PILHA
+    $FRASE     = &ULTIMA_PILHA
+%%%%
+
+    <div class="container mb-5">
+        {{%% #IF FORMATADA %%}}
+            <h2 class="titulo text-center">
+                <minimo20>{{{{ FRASE | sanitize }}}}</minimo20>
+            </h2>
+        {{%% #ELSE %%}}
+            {{{{ FRASE | sanitize }}}}
+        {{%% #END_IF %%}}
+    </div>
+
+&END_MODULE()    //  HTML.FRASE
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.SHOW_HTML_TEXT") ::
+
+%%%%
+    // HTML.SHOW_HTML_TEXT( texto )
+    // Renders text with HTML tags displayed as escaped code (pre-formatted).
+    //
+    // Parameters (from stack):
+    //   texto  — string to display as escaped HTML
+
+    $TEXTO     = &ULTIMA_PILHA
+    $COMANDO   = "<pre style='white-space:pre-wrap;'> __html_text_placeholder__ </pre>"
+    $NOVO_TEXTO = COMANDO.REPLACE(" __html_text_placeholder__ " TEXTO.HTML_ESCAPE())
+%%%%
+
+    {{{{ NOVO_TEXTO }}}}
+
+&END_MODULE()    //  HTML.SHOW_HTML_TEXT
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.GOOGLE_MAP") ::
+
+%%%%
+    // HTML.GOOGLE_MAP( model )
+    // Renders an embedded Google Map iframe.
+    // Uses model.google_map if available, falls back to cliente.google_map.
+    //
+    // Parameters (from stack):
+    //   model  — dictionary with optional field: GOOGLE_MAP
+
+    #MODEL = &ULTIMA_PILHA
+    $MAP   = #IF model.google_map :: model.google_map #ELSE cliente.google_map
+%%%%
+
+    {{%% #IF MAP %%}}
+        <div class="container mb-2">
+            <div class="map-container" id="map-container1">
+                <iframe title="map-container"
+                        src="{{{{ MAP }}}}"
+                        frameborder="0"
+                        style="border:0;"
+                        allowfullscreen=""
+                        aria-hidden="false"
+                        tabindex="0">
+                </iframe>
+            </div>
+        </div>
+    {{%% #END_IF %%}}
+
+&END_MODULE()    //  HTML.GOOGLE_MAP
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.COLS_ANALISA_SIZE") ::
+
+    // HTML.COLS_ANALISA_SIZE( size )
+    // Returns Bootstrap column class + padding style based on size keyword.
+    // Result: ( $COLS , $STYLE ) — two string values pushed to stack.
+    //
+    // Parameters (from stack):
+    //   size  — string: "xxsm" | "xsm" | "sm" | "md" | "lg" | "xl" | "xxl"
+    //           or a custom Bootstrap class string (passed through as-is)
+    //
+    // Usage:
+    //   ($COLS , $STYLE) = HTML.COLS_ANALISA_SIZE(SIZE)
+
+    $SIZE = &ULTIMA_PILHA
+    $SIZE = SIZE.LOWER()
+
+    ($COLUNAS , $PX) = #MATCH SIZE
+        "xxsm"  :: "col-3 col-sm-3 col-md-3 col-lg-2 col-xl-1 col-xxl-1 mb-4"         "1px"
+        "xsm"   :: "col-4 col-sm-4 col-md-3 col-lg-3 col-xl-2 col-xxl-2 mb-4"         "2px"
+        "sm"    :: "col-6 col-sm-6 col-md-4 col-lg-3 col-xl-3 col-xxl-2 mb-4"         "4px"
+        "md"    :: "col-12 col-sm-6 col-md-6 col-lg-4 mb-4"                            "4px"
+        "lg"    :: "col-12 col-sm-12 col-md-12 col-lg-6 col-xl-6 mb-4"                "5px"
+        "xl"    :: "col-12 col-sm-12 col-md-12 col-lg-12 col-xl-6 mb-4"               "5px"
+        "xxl"   :: "col-12 col-sm-12 col-md-12 col-lg-12 col-xl-12 mb-4"              "7px"
+        ""      :: "col-12 col-sm-6 col-md-4 col-lg-3 mb-4"                            "4px"
+        default :: SIZE                                                                  "5px"
+    #END_MATCH
+
+    $STYLE = "style='padding: px;'"
+    $STYLE = STYLE.REPLACE("px" PX)
+    COLUNAS
+    STYLE
+
+&END_MODULE()    //  HTML.COLS_ANALISA_SIZE
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.LIGHTBOX") ::
+
+%%%%
+    // HTML.LIGHTBOX
+    // Renders a full-screen lightbox overlay with keyboard and click navigation.
+    // No parameters — include once per page, before any gallery module.
+    // Galleries using lightbox call openLightbox(src, alt) via JavaScript.
+%%%%
+
+    <div id="lightbox" onclick="closeLightbox()"
+         style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+                background:rgba(0,0,0,0.9); z-index:9999; cursor:pointer;
+                justify-content:center; align-items:center;">
+        <img id="lightbox-img" src="" alt=""
+             style="max-width:90%; max-height:90vh; border-radius:8px; box-shadow:0 0 30px rgba(255,255,255,0.3);">
+        <button onclick="closeLightbox()"
+                style="position:absolute; top:20px; right:30px; background:none;
+                       border:none; color:white; font-size:40px; cursor:pointer;">✕</button>
+        <button onclick="event.stopPropagation(); prevImage()"
+                style="position:absolute; left:20px; top:50%; transform:translateY(-50%);
+                       background:rgba(255,255,255,0.2); border:none; color:white;
+                       font-size:30px; padding:10px 15px; border-radius:50%; cursor:pointer;">‹</button>
+        <button onclick="event.stopPropagation(); nextImage()"
+                style="position:absolute; right:20px; top:50%; transform:translateY(-50%);
+                       background:rgba(255,255,255,0.2); border:none; color:white;
+                       font-size:30px; padding:10px 15px; border-radius:50%; cursor:pointer;">›</button>
+    </div>
+
+    <script>
+        let currentImages = [];
+        let currentIndex = 0;
+
+        function openLightbox(src, alt, images, index) {
+            currentImages = images || [{ src, alt }];
+            currentIndex = index || 0;
+            updateLightbox();
+            document.getElementById('lightbox').style.display = 'flex';
+            document.addEventListener('keydown', handleKeydown);
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').style.display = 'none';
+            document.removeEventListener('keydown', handleKeydown);
+        }
+
+        function updateLightbox() {
+            const img = currentImages[currentIndex];
+            document.getElementById('lightbox-img').src = img.src;
+            document.getElementById('lightbox-img').alt = img.alt;
+        }
+
+        function nextImage() {
+            currentIndex = (currentIndex + 1) % currentImages.length;
+            updateLightbox();
+        }
+
+        function prevImage() {
+            currentIndex = (currentIndex - 1 + currentImages.length) % currentImages.length;
+            updateLightbox();
+        }
+
+        function handleKeydown(e) {
+            if (e.key === 'ArrowRight') nextImage();
+            if (e.key === 'ArrowLeft')  prevImage();
+            if (e.key === 'Escape')     closeLightbox();
+        }
+    </script>
+
+&END_MODULE()    //  HTML.LIGHTBOX
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.GALLERY_HOVER_FOTOS") ::
+
+%%%%
+    // HTML.GALLERY_HOVER_FOTOS( fotos[] route_url size )
+    // Responsive hover gallery with lightbox support.
+    // Requires HTML.LIGHTBOX on the page.
+    //
+    // Parameters (from stack, last pushed = first read):
+    //   size      — string: "sm" | "md" | "lg" | "xl" (Bootstrap column size)
+    //   route_url — string: base URL for image links (empty = no link)
+    //   fotos[]   — vector of dictionaries with fields: IMAGEM_THUMB, IMAGEM, TITULO, ID
+
+    $SIZE  = &ULTIMA_PILHA
+    $ROUTE = &ULTIMA_PILHA
+    #FOTOS[] = &ULTIMA_PILHA
+    ($COLS , $STYLE) = HTML.COLS_ANALISA_SIZE(SIZE)
+%%%%
+
+    {{%% #IF FOTOS %%}}
+        <div class="row" style="max-width:1500px;">
+            {{%% #FOR FOTO in FOTOS %%}}
+                <div class="{{{{ COLS }}}}">
+                    <div class="card hover-card" style="cursor:pointer;"
+                         onclick="openLightbox('/_cache_/media/{{{{ FOTO.IMAGEM }}}}', '{{{{ FOTO.TITULO }}}}', allImages, {{{{ IDX }}}})">
+                        {{{{ HTML.PICTURE_RENDER_THUMB(FOTO) }}}}
+                        {{%% #IF FOTO.TITULO %%}}
+                            <div class="card-body text-center p-1">
+                                <small>{{{{ FOTO.TITULO | sanitize }}}}</small>
+                            </div>
+                        {{%% #END_IF %%}}
+                    </div>
+                </div>
+            {{%% #END_FOR %%}}
+        </div>
+
+        <script>
+            const allImages = [
+                {{%% #FOR FOTO in FOTOS %%}}
+                    { src: '/_cache_/media/{{{{ FOTO.IMAGEM }}}}', alt: '{{{{ FOTO.TITULO }}}}' }{{%% #IF .NOT. ULTIMO_FOR %%}},{{%% #END_IF %%}}
+                {{%% #END_FOR %%}}
+            ];
+        </script>
+    {{%% #END_IF %%}}
+
+&END_MODULE()    //  HTML.GALLERY_HOVER_FOTOS
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.GALLERY_GRID_FOTOS") ::
+
+%%%%
+    // HTML.GALLERY_GRID_FOTOS( itens[] route_url size )
+    // Responsive grid gallery with optional titles and links.
+    //
+    // Parameters (from stack, last pushed = first read):
+    //   size      — string: "sm" | "md" | "lg" | "xl"
+    //   route_url — string: base URL prefix for links (empty = no link)
+    //   itens[]   — vector of dictionaries with sub-dicts: FOTO and ITEM
+    //               FOTO: IMAGEM, IMAGEM_THUMB, TITULO
+    //               ITEM: TITULO (optional), RODAPE (optional)
+
+    $SIZE  = &ULTIMA_PILHA
+    $ROUTE = &ULTIMA_PILHA
+    #ITENS[] = &ULTIMA_PILHA
+    ($COLS , $STYLE) = HTML.COLS_ANALISA_SIZE(SIZE)
+%%%%
+
+    {{%% #IF ITENS %%}}
+        <div class="row" style="max-width:1500px;">
+            {{%% #FOR REG in ITENS %%}}
+                %%%%
+                    #FOTO = REG.FOTO
+                    #ITEM = REG.ITEM
+                    $HREF = #IF ROUTE :: ROUTE FOTO.ID $+ #ELSE ""
+                %%%%
+                <div class="{{{{ COLS }}}}">
+                    <div class="card h-100" {{{{ STYLE }}}}>
+                        <a href="{{{{ HREF }}}}">
+                            {{{{ HTML.PICTURE_RENDER_IMAGEM(FOTO) }}}}
+                        </a>
+                        {{%% #IF ITEM.TITULO .OR. ITEM.RODAPE %%}}
+                            <div class="card-body">
+                                {{%% #IF ITEM.TITULO %%}}
+                                    <h6 class="text-center cursivo">
+                                        <__minimo__>{{{{ ITEM.TITULO | sanitize }}}}</__minimo__>
+                                    </h6>
+                                {{%% #END_IF %%}}
+                                {{%% #IF ITEM.RODAPE %%}}
+                                    <h6 class="text-center">
+                                        <__minimo__>{{{{ ITEM.RODAPE | sanitize }}}}</__minimo__>
+                                    </h6>
+                                {{%% #END_IF %%}}
+                            </div>
+                        {{%% #END_IF %%}}
+                    </div>
+                </div>
+            {{%% #END_FOR %%}}
+        </div>
+    {{%% #END_IF %%}}
+
+&END_MODULE()    //  HTML.GALLERY_GRID_FOTOS
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.FOTOS_EXTRAS") ::
+
+%%%%
+    // HTML.FOTOS_EXTRAS( extras[] )
+    // Renders a grid of extra photos from direct URLs (not from cache).
+    // Used for client-uploaded photos displayed alongside a passeio.
+    //
+    // Parameters (from stack):
+    //   extras[]  — vector of strings: direct image URLs
+
+    $EXTRAS[] = &ULTIMA_PILHA
+%%%%
+
+    <div class="row" style="max-width:1500px;">
+        <h4 class="titulo text-center mb-3">
+            <__small_minimo__><small>+ Photos — {{{{ passeio.titulo }}}}</small></__small_minimo__>
+        </h4>
+        {{%% #FOR FOTO_URL in EXTRAS %%}}
+            <div class="col-12 col-sm-12 col-md-6 col-lg-6 mb-4" style="max-width:1500px;">
+                <div class="card">
+                    <div class="card-body">
+                        <picture>
+                            <img class="card-img-top rounded"
+                                 src="{{{{ FOTO_URL }}}}"
+                                 alt="Foto"
+                                 style="max-width:1000px;">
+                        </picture>
+                    </div>
+                </div>
+            </div>
+            <br>
+        {{%% #END_FOR %%}}
+        <br>&nbsp;<br>
+    </div>
+
+&END_MODULE()    //  HTML.FOTOS_EXTRAS
+
+
+//  ============================================================================================================  //
+
+
+&CREATE_MODULE("HTML.GALLERY_GRID_URLS") ::
+
+%%%%
+    // HTML.GALLERY_GRID_URLS( urls[] size )
+    // Simple responsive grid gallery from a vector of image URLs.
+    // No lightbox, no titles — just images.
+    //
+    // Parameters (from stack, last pushed = first read):
+    //   size    — string: "sm" | "md" | "lg" | "xl" (see HTML.COLS_ANALISA_SIZE)
+    //   urls[]  — vector of strings: image URLs
+
+    $SIZE  = &ULTIMA_PILHA
+    $URLS[] = &ULTIMA_PILHA
+    ($COLS , $STYLE) = HTML.COLS_ANALISA_SIZE(SIZE)
+%%%%
+
+    {{%% #IF URLS %%}}
+        <div class="row" style="max-width:1500px;">
+            {{%% #FOR URL in URLS %%}}
+                <div class="{{{{ COLS }}}}">
+                    <div class="card" {{{{ STYLE }}}}>
+                        <picture>
+                            <img loading="lazy"
+                                 class="card-img-top rounded"
+                                 src="{{{{ URL }}}}"
+                                 alt="Foto"
+                                 style="width:100%; max-width:1000px;">
+                        </picture>
+                    </div>
+                </div>
+            {{%% #END_FOR %%}}
+        </div>
+    {{%% #END_IF %%}}
+
+&END_MODULE()    //  HTML.GALLERY_GRID_URLS
+
+
+//  ============================================================================================================  //
+//  END OF FILE  :  core_html.html
+//  ============================================================================================================  //
