@@ -184,33 +184,49 @@ shared across all templates — zero file I/O per request.
 ## The pipeline — where Merlin shines
 
 The pipeline operator `|` chains operations on data. Each operator receives
-the result of the previous one:
+the result of the previous one. Any of the 300+ built-in operators and any
+module from any library works in the pipeline automatically.
 
 ```merlin
-// Filter products with stock, add computed field, sort by value
+// Filter, compute, sort and update in one line:
+PRODUTOS | FILTER("@ESTOQUE 0 >") | ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) | SORT_BY("@TOTAL") | ATUALIZA
+
+// or multiline — same result:
+PRODUTOS |
+    FILTER("@ESTOQUE 0 >") |
+    ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) |
+    SORT_BY("@TOTAL") |
+    ATUALIZA
+
+// Save to a new variable instead of updating in-place:
 #RESUMO[] = PRODUTOS |
     FILTER("@ESTOQUE 0 >") |
     ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) |
     SORT_BY("@TOTAL")
 
-// Equivalent inline:
-#RESUMO[] = PRODUTOS | FILTER("@ESTOQUE 0 >") | ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) | SORT_BY("@TOTAL")
-
 // Equivalent with dot notation (parentheses required):
-#RESUMO[] = PRODUTOS.
-                FILTER("@ESTOQUE 0 >").
-                ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *).
-                SORT_BY("@TOTAL")
-
-// Equivalent inline (parentheses required):
 #RESUMO[] = PRODUTOS.FILTER("@ESTOQUE 0 >").ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *).SORT_BY("@TOTAL")
 ```
 
 Inside pipeline expressions, `@FIELD` and `$FIELD` refer to the current item:
 
 ```merlin
-PRODUTOS | FILTER("@PRECO 15 >")             // @PRECO = current product's price
-PRODUTOS | FILTER("$CATEGORIA \"carnes\" $==")   // $CATEGORIA = current product's category
+PRODUTOS | FILTER("@PRECO 15 >")                  // @PRECO = current product's price
+PRODUTOS | FILTER("$CATEGORIA \"carnes\" $==")    // $CATEGORIA = current product's category
+```
+
+Modules work in the pipeline too — the current item is passed automatically:
+
+```merlin
+// These three are equivalent:
+{{%% #FOR PRODUTO in PRODUTOS %%}}
+    {{{{ HTML.MENU_CARD(PRODUTO) }}}}
+{{%% #END_FOR %%}}
+
+{{{{ PRODUTOS | HTML.MENU_CARD }}}}
+
+// HTML.* and RESTAURANTE.* are priority namespaces — prefix is optional:
+{{{{ PRODUTOS | MENU_CARD }}}}
 ```
 
 ### Comparison operators
@@ -255,9 +271,9 @@ Available pipeline operators:
 ### #FOR BY N — iterate in chunks
 
 ```merlin
-{{%% #FOR LINHA in FOTOS BY 3 %%}}
+{{%% #FOR LINHAS in FOTOS BY 3 %%}}
     <div class="row">
-        {{%% #FOR FOTO in LINHA %%}}
+        {{%% #FOR FOTO in LINHAS %%}}
             <div class="col-4">
                 <img src="{{{{ FOTO.IMAGEM_THUMB }}}}" alt="{{{{ FOTO.TITULO }}}}">
             </div>
@@ -293,30 +309,83 @@ $NOME  = #IF PRODUTO.TITULO :: PRODUTO.TITULO #ELSE "Produto sem nome"
 
 ---
 
-## Scope — LOCAL_SCOPE and LOCAL_EXPLICITY_SCOPE
+## Scope control
 
-Merlin has explicit scope control:
+Merlin has explicit, named scope control. Every scope is isolated —
+variables created inside die when the scope closes.
+
+### &LOCAL_SCOPE — everything is local automatically
 
 ```merlin
+@TOTAL = 0
+
 &LOCAL_SCOPE
-    @SUBTOTAL = PRECO 1.1 *    // local — dies here
-    @TOTAL += SUBTOTAL          // TOTAL is from outer scope — correct
+    @SUBTOTAL = PRECO 1.1 *   // local — dies here
+    @TEMP     = SUBTOTAL 2 *  // also local
+    @OUTER::TOTAL += SUBTOTAL // OUTER:: writes to the layer behind
 &END_LOCAL_SCOPE
-// SUBTOTAL doesn't exist here ✓
-// TOTAL was updated ✓
+
+// SUBTOTAL and TEMP don't exist here ✓
+// TOTAL was updated via OUTER:: ✓
 ```
+
+### &LOCAL_NAMED_SCOPE — scope with a name
+
+The name lets child scopes write directly to this scope by name:
 
 ```merlin
-&LOCAL_EXPLICITY_SCOPE
-    @LOCAL::TEMP = 0            // explicitly local
-    @TOTAL += TEMP              // TOTAL from outer scope
-    @OTHER = 0                  // goes to outer scope (no LOCAL::)
-&END_LOCAL_EXPLICITY_SCOPE
+&LOCAL_NAMED_SCOPE("CALCULOS")
+    @BASE = 100
+
+    &LOCAL_SCOPE
+        @RESULTADO = BASE 1.1 *
+        @CALCULOS::BASE = RESULTADO   // writes directly to CALCULOS scope by name
+    &END_LOCAL_SCOPE
+
+    // BASE is now updated ✓
+&END_LOCAL_NAMED_SCOPE
 ```
 
-Every `#FOR` loop automatically opens a `LOCAL_EXPLICITY_SCOPE` —
-loop variables (`IDX`, `ITEM`) are local, everything else writes to
-outer scope naturally.
+### &LOCAL_EXPLICIT_SCOPE — only explicit writes are local
+
+Name is required. Without a prefix, variables go to the outer scope:
+
+```merlin
+&LOCAL_EXPLICIT_SCOPE("LOOP")
+    @LOOP::CONTADOR = 0    // explicitly local — uses scope name
+    @TOTAL += CONTADOR     // no prefix → goes to outer scope naturally
+    @OUTER::TOTAL += 1     // OUTER:: is also explicit — same result
+&END_LOCAL_EXPLICIT_SCOPE
+```
+
+### Scope prefixes — complete system
+
+```
+NOME::    →  write to named scope (from any child)
+OUTER::   →  write to the layer behind current scope
+MERLIN::  →  write directly to Merlin local (skip all scopes)
+GLOBAL::* →  immutable (loaded at 10am)
+(no prefix, LOCAL_SCOPE)          →  local automatically
+(no prefix, LOCAL_EXPLICIT_SCOPE) →  goes to outer scope naturally
+```
+
+### #FOR — automatic isolated scope
+
+Every `#FOR` loop opens an automatic `LOCAL_EXPLICIT_SCOPE` named `FOR_SCOPE_N`
+(where N = current scope depth). Loop variables are local, everything else
+writes to the outer scope naturally:
+
+```merlin
+@TOTAL = 0
+
+#FOR IDX, PRODUTO in PRODUTOS
+    @TEMP = PRODUTO.PRECO 1.1 *   // local to this iteration
+    @TOTAL += TEMP                 // goes to outer scope — correct
+#END_FOR
+
+// TEMP doesn't exist here ✓
+// TOTAL accumulated correctly ✓
+```
 
 ---
 
