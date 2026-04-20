@@ -26,6 +26,9 @@ context['produtos'] = produtos_ordenados
 With Merlin, the template handles it:
 
 ```merlin
+#RESUMO[] = PRODUTOS | FILTER("@ESTOQUE 0 >") | ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) | SORT_BY("@TOTAL")
+
+// or multiline — same result:
 #RESUMO[] = PRODUTOS |
     FILTER("@ESTOQUE 0 >") |
     ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) |
@@ -38,7 +41,7 @@ With Merlin, the template handles it:
 
 | Feature | Merlin | Jinja2 | Tera | Handlebars |
 |---------|:------:|:------:|:----:|:----------:|
-| Full pipeline (FILTER, ADD_FIELD, SORT_BY) | ✓ | ✗ | ✗ | ✗ |
+| Pipeline — any of 300+ operators and all lib modules | ✓ | ✗ | ✗ | ✗ |
 | Reusable modules (real functions) | ✓ | partial | partial | partial |
 | In-template computation | ✓ | limited | ✗ | ✗ |
 | Context hierarchy (CORE/SITE/CLIENT) | ✓ | ✗ | ✗ | ✗ |
@@ -46,6 +49,10 @@ With Merlin, the template handles it:
 | FOR BY N — iterate in chunks | ✓ | ✗ | ✗ | ✗ |
 | Libraries (FINANCE, STATS, HTML...) | ✓ | ✗ | ✗ | ✗ |
 | Zero backend for complex logic | ✓ | ✗ | ✗ | ✗ |
+
+> The pipeline column deserves emphasis: any of the 300+ built-in operators,
+> any module from any library (HTML, FINANCE, RESTAURANTE...) and any module
+> you create — all work in the pipeline automatically. No registration needed.
 
 ---
 
@@ -96,6 +103,13 @@ With Merlin, the template handles it:
 ```merlin
 // Use anywhere — in templates, in other modules, in pipelines:
 {{{{ HTML.MENU_CARD(PRODUTO 1) }}}}
+
+// In templates, HTML. and RESTAURANTE. prefixes are optional —
+// Merlin searches HTML.MENU_CARD first, then RESTAURANTE.MENU_CARD, then MENU_CARD:
+{{{{ MENU_CARD(PRODUTO 1) }}}}
+
+// Modules work in pipelines too — PRODUTO passed as current item:
+{{{{ PRODUTOS | MENU_CARD(1) }}}}
 
 // Automatic operator promotion — Merlin knows PRODUTOS is a vector:
 @TOTAL = @PRODUTOS.PRECO.SUM()   // SUM → VET_SUM automatically
