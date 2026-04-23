@@ -101,7 +101,25 @@ no garbage collector needed, because there's no garbage.
 
 ## Templates — three delimiters
 
-Merlin templates are HTML files with three types of Merlin blocks:
+Merlin templates are `.html` files. Everything **outside** the delimiters is
+pure HTML — written exactly as you would without Merlin. No special syntax,
+no escaping, no surprises. Like Jinja2 and Tera, Merlin passes it through unchanged.
+
+```html
+<div class="container">        ← pure HTML, untouched by Merlin
+
+%%%%
+    @TOTAL = @PRODUTOS.PRECO.SUM()   ← Merlin code
+%%%%
+
+    <h2>Total: {{{{ $FORMATA_MOEDA(TOTAL) }}}}</h2>   ← HTML + Merlin output
+
+</div>                         ← pure HTML again
+```
+
+In practice, complex pages have almost no visible HTML in the template —
+all markup lives inside modules, alongside the Merlin logic that generates it.
+The template becomes a declaration of intent, not a wall of tags.
 
 ### `%%%% ... %%%%` — Pure Merlin code block (no output)
 
@@ -109,7 +127,7 @@ Merlin templates are HTML files with three types of Merlin blocks:
 %%%%
     @PRECO_FINAL = PRECO 1.1 *
     $TITULO_UPPER = TITULO | UPPER
-    #ITENS_FILTRADOS[] = ITENS | FILTER("@ESTOQUE 0 >")
+    #ITENS_FILTRADOS[] = ITENS | FILTER(@ESTOQUE 0 >)
 %%%%
 ```
 
@@ -132,6 +150,11 @@ Use this for flow control and inline assignments.
 <h2>{{{{ PRODUTO.TITULO }}}}</h2>
 <span>{{{{ $FORMATA_MOEDA(@PRODUTO.PRECO) }}}}</span>
 <div>{{{{ HTML.MENU_CARD(PRODUTO) }}}}</div>
+
+<!-- inline #IF directly in HTML — no intermediate variable needed -->
+<img src="/_cache_/media/{{{{ FOTO.IMAGEM_THUMB }}}}" alt="{{{{ FOTO.TITULO }}}}">
+{{{{ #IF FOTOS_EXTRAS :: HTML.GALLERY_URLS(FOTOS_EXTRAS) }}}}
+{{{{ #EXECUTA_TEMPLATE("extra_fields/{{{{nome_model}}}}.html") }}}}
 ```
 
 The last string on the stack becomes the HTML output.
@@ -208,12 +231,17 @@ PRODUTOS |
 #RESUMO[] = PRODUTOS.FILTER("@ESTOQUE 0 >").ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *).SORT_BY("@TOTAL")
 ```
 
-Inside pipeline expressions, `@FIELD` and `$FIELD` refer to the current item:
+Inside pipeline expressions, `@FIELD` and `$FIELD` refer to the current item —
+expanded automatically to `@VECTOR[current_index].FIELD`:
 
 ```merlin
-PRODUTOS | FILTER("@PRECO 15 >")                  // @PRECO = current product's price
-PRODUTOS | FILTER("$CATEGORIA \"carnes\" $==")    // $CATEGORIA = current product's category
+PRODUTOS | FILTER(@PRECO 15 >)               // @PRECO = current product's price
+PRODUTOS | FILTER($CATEGORIA "carnes" $==)   // $CATEGORIA = current product's category
+PRODUTOS | WHERE(@CATEGORIA_ID 2 ==) | SORT_BY("PRECO")
 ```
+
+No quotes needed around pipeline expressions — `@FIELD` and `$FIELD` are
+recognised and expanded automatically.
 
 Modules work in the pipeline too — the current item is passed automatically:
 
@@ -233,11 +261,12 @@ Modules work in the pipeline too — the current item is passed automatically:
 
 ```merlin
 >    <    >=    <=   // boolean — returns 0 or 1
->?   <?   >=?   <=?  // value — returns the winning value, not boolean
+>?   <?   >=?   <=?  // value   — returns the greater/lesser of the two values
+$>?  $<?             // string  — returns the alphabetically greater/lesser string
 
 @ESTOQUE 0 >         // returns 1 if ESTOQUE > 0, else 0
-@ESTOQUE 0 >?        // returns ESTOQUE if ESTOQUE > 0, else 0
-@PRECO 10 >=?        // returns PRECO if PRECO >= 10, else 10
+@ESTOQUE 0 >?        // returns ESTOQUE if ESTOQUE > 0, else 0 (the winner)
+@PRECO 10 >=?        // returns PRECO if PRECO >= 10, else 10 (the winner)
 
 $TITULO $RODAPE $>?  // returns the alphabetically greater string
 $TITULO $RODAPE $<?  // returns the alphabetically lesser string
@@ -355,12 +384,14 @@ All other variables belong to the outer scope naturally — no explicit transfer
 
 ### #FOR BY N — iterate in chunks
 
+Each iteration receives a vector of N items (`LINHAS` = the chunk):
+
 ```merlin
-{{%% #FOR LINHA in FOTOS BY 3 %%}}
+{{%% #FOR LINHAS in FOTOS BY 3 %%}}
     <div class="row">
-        {{%% #FOR FOTO in LINHA %%}}
+        {{%% #FOR FOTO in LINHAS %%}}
             <div class="col-4">
-                <img src="{{{{ FOTO.IMAGEM_THUMB }}}}" alt="{{{{ FOTO.TITULO }}}}">
+                <img src="/_cache_/media/{{{{ FOTO.IMAGEM_THUMB }}}}" alt="{{{{ FOTO.TITULO }}}}">
             </div>
         {{%% #END_FOR %%}}
     </div>
@@ -377,9 +408,17 @@ All other variables belong to the outer scope naturally — no explicit transfer
     <span>Preço sob consulta</span>
 {{%% #END_IF %%}}
 
-// Inline — for short expressions
+// Inline — short expressions, no #ELSE_IF, no #END_IF needed
 $THUMB = #IF FOTO.IMAGEM_THUMB :: "/_cache_/media/" FOTO.IMAGEM_THUMB $+ #ELSE "/_cache_/media/" FOTO.IMAGEM $+
 $NOME  = #IF PRODUTO.TITULO :: PRODUTO.TITULO #ELSE "Produto sem nome"
+
+// Inline without #ELSE — false condition does nothing, returns nothing
+$FOTO = #IF PRODUTO.IMAGEM :: PRODUTO.IMAGEM
+
+// Very common in templates — renders only if data exists
+{{{{ #IF FOTOS_EXTRAS :: HTML.GALLERY_URLS(FOTOS_EXTRAS) }}}}
+// if FOTOS_EXTRAS exists → renders gallery
+// if not → nothing rendered, no default needed, no error
 ```
 
 ### #MATCH
