@@ -246,7 +246,7 @@ RPN eliminates ambiguity. Every operation is explicit:
 ## Documentation
 
 - [Getting Started](docs/quick_start.md) — concepts, syntax, first template
-- [Syntax Reference](docs/syntax.md) — complete language reference
+- [Syntax Reference](docs/merlin_reference.md) — complete language reference
 - [Libraries](libs/) — ready-made modules
 
 ---
