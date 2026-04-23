@@ -1,0 +1,209 @@
+////  ============================================================================================================  ////
+////
+////  EXAMPLE: Full restaurant menu analysis — zero backend
+////
+////  Demonstrates:
+////    - EXECUTA_EACH with &BEGIN_EACH — initialize / iterate / finalize pattern
+////    - Triple nested EXECUTA_EACH for category totals
+////    - RETURN with multiple values of different types
+////    - FILTER + ADD_FIELD in pipeline
+////    - Cross-referencing PRATOS + CATEGORIAS in the same expression
+////    - &NO_STACK() and &END_PIPELINE for flow control
+////
+////  Data available in RAM (loaded at startup — zero backend queries):
+////    PRATOS[]             — all menu items
+////    CATEGORIAS_PRODUTO[] — all categories
+////
+////  Result — 6 values returned from a single expression:
+////    $PRATO_MAIS_CARO       — name of the most expensive dish
+////    $PRATO_MAIS_BARATO     — name of the cheapest dish
+////    @PRECO_MEDIO           — average price
+////    @TOTAL_CARDAPIO        — sum of all prices
+////    #PRATOS_ACIMA_MEDIA[]  — dishes above average (with DIFERENCA field)
+////    #RESUMO_CATEGORIAS[]   — totals per category
+////
+////  ============================================================================================================  ////
+
+%%%%
+
+    ($PRATO_MAIS_CARO , $PRATO_MAIS_BARATO , @PRECO_MEDIO , @TOTAL_CARDAPIO ,
+     #PRATOS_ACIMA_MEDIA[] , #RESUMO_CATEGORIAS[]) = PRATOS.
+        .EXECUTA_EACH(
+
+            // ── INITIALIZE ────────────────────────────────────────────────────
+            @TOTAL     = 0
+            @CONTAGEM  = 0
+            @MAIS_CARO = 0
+            @MAIS_BARATO      = 999999
+            $NOME_MAIS_CARO   = ""
+            $NOME_MAIS_BARATO = ""
+
+            // ── ITERATE each dish ─────────────────────────────────────────────
+            &BEGIN_EACH(
+                #PRATO = ITEM
+
+                @TOTAL    += @PRATO.PRECO
+                @CONTAGEM += 1
+
+                #IF @PRATO.PRECO MAIS_CARO >
+                    @MAIS_CARO      = @PRATO.PRECO
+                    $NOME_MAIS_CARO = PRATO.TITULO
+                #END_IF
+
+                #IF @PRATO.PRECO MAIS_BARATO <
+                    @MAIS_BARATO      = @PRATO.PRECO
+                    $NOME_MAIS_BARATO = PRATO.TITULO
+                #END_IF
+            )
+
+            // ── FINALIZE ──────────────────────────────────────────────────────
+            @MEDIA = TOTAL CONTAGEM /
+
+            // Dishes above average — with computed DIFERENCA field
+            #ACIMA_MEDIA[] = PRATOS |
+                FILTER(@PRECO MEDIA >) |
+                ADD_FIELD(@DIFERENCA = @PRECO MEDIA -) |
+                SORT_BY_DESC("@PRECO")
+            &END_PIPELINE   // PRATOS above average
+
+            // Totals per category — triple nested EXECUTA_EACH
+            #RESUMO[] = CATEGORIAS_PRODUTO |
+                EXECUTA_EACH(
+                    #RESUMO_CAT[] = #[]
+
+                    &BEGIN_EACH(
+                        #CAT = ITEM
+
+                        // For each category — filter dishes and accumulate
+                        PRATOS |
+                            FILTER(@CATEGORIA_ID @CAT.ID ==) |
+                            EXECUTA_EACH(
+                                @TOTAL_CAT = 0
+                                @QTD_CAT   = 0
+                                &BEGIN_EACH(
+                                    @TOTAL_CAT += @ITEM.PRECO
+                                    @QTD_CAT   += 1
+                                )
+                            )
+                        &END_PIPELINE   // PRATOS filtered by category
+
+                        // Only add categories that have dishes
+                        #IF QTD_CAT
+                            #RESUMO_CAT[+] = {
+                                "CATEGORIA"  : CAT.TITULO ,
+                                "TOTAL"      : TOTAL_CAT ,
+                                "QUANTIDADE" : QTD_CAT ,
+                                "MEDIA_CAT"  : TOTAL_CAT QTD_CAT /
+                            }
+                        #END_IF
+                    )
+
+                ) |
+                RETURN(#RESUMO_CAT)
+            &END_PIPELINE   // CATEGORIAS_PRODUTO
+
+            &NO_STACK()
+
+        ) |
+        RETURN(NOME_MAIS_CARO , NOME_MAIS_BARATO , ACIMA_MEDIA , MEDIA , TOTAL , RESUMO)
+
+    &END_PIPELINE   // full analysis
+
+%%%%
+
+<div class="container py-4">
+
+    <!-- Summary cards -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="text-center mb-4">📊 Menu Analysis</h3>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-danger text-center p-3">
+                <h6 class="text-muted">Most Expensive</h6>
+                <strong>{{{{ PRATO_MAIS_CARO }}}}</strong>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success text-center p-3">
+                <h6 class="text-muted">Most Affordable</h6>
+                <strong>{{{{ PRATO_MAIS_BARATO }}}}</strong>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning text-center p-3">
+                <h6 class="text-muted">Average Price</h6>
+                <strong>{{{{ $FORMATA_MOEDA(PRECO_MEDIO) }}}}</strong>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-primary text-center p-3">
+                <h6 class="text-muted">Menu Total</h6>
+                <strong>{{{{ $FORMATA_MOEDA(TOTAL_CARDAPIO) }}}}</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dishes above average -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5>🔝 Above average ({{{{ $FORMATA_MOEDA(PRECO_MEDIO) }}}})</h5>
+            <div class="row">
+                {{%% #FOR PRATO in PRATOS_ACIMA_MEDIA %%}}
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            {{{{ HTML.PICTURE_RENDER_THUMB(PRATO) }}}}
+                            <div class="card-body">
+                                <h6>{{{{ PRATO.TITULO }}}}</h6>
+                                <p class="text-danger fw-bold">
+                                    {{{{ $FORMATA_MOEDA(@PRATO.PRECO) }}}}
+                                    <small class="text-muted">
+                                        (+ {{{{ $FORMATA_MOEDA(@PRATO.DIFERENCA) }}}})
+                                    </small>
+                                </p>
+                                <p class="text-muted small">{{{{ PRATO.RODAPE }}}}</p>
+                            </div>
+                        </div>
+                    </div>
+                {{%% #END_FOR %%}}
+            </div>
+        </div>
+    </div>
+
+    <!-- Totals per category -->
+    <div class="row">
+        <div class="col-12">
+            <h5>📂 Totals by Category</h5>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th class="text-end">Dishes</th>
+                        <th class="text-end">Avg Price</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{%% #FOR CAT in RESUMO_CATEGORIAS %%}}
+                        <tr>
+                            <td>{{{{ CAT.CATEGORIA }}}}</td>
+                            <td class="text-end">{{{{ $NUM(@CAT.QUANTIDADE) }}}}</td>
+                            <td class="text-end">{{{{ $FORMATA_MOEDA(@CAT.MEDIA_CAT) }}}}</td>
+                            <td class="text-end fw-bold">{{{{ $FORMATA_MOEDA(@CAT.TOTAL) }}}}</td>
+                        </tr>
+                    {{%% #END_FOR %%}}
+                </tbody>
+                <tfoot>
+                    <tr class="table-dark">
+                        <th>Grand Total</th>
+                        <th></th>
+                        <th class="text-end">{{{{ $FORMATA_MOEDA(PRECO_MEDIO) }}}}</th>
+                        <th class="text-end fw-bold">{{{{ $FORMATA_MOEDA(TOTAL_CARDAPIO) }}}}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+</div>
