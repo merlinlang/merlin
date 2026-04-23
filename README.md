@@ -28,7 +28,7 @@ context['produtos'] = produtos_ordenados
 With Merlin, the template handles it — and updates PRODUTOS in-place:
 
 ```merlin
-PRODUTOS | FILTER("@ESTOQUE 0 >") | ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) | SORT_BY("@TOTAL") | ATUALIZA
+PRODUTOS | FILTER(@ESTOQUE 0 >) | ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) | SORT_BY("@TOTAL") | ATUALIZA
 ```
 
 And rendering is just as simple:
@@ -74,7 +74,7 @@ And rendering is just as simple:
 ```html
 %%%%
     // Pure Merlin code — no output
-    #ITENS[] = PRODUTOS | FILTER("@ESTOQUE 0 >") | SORT_BY("@PRECO")
+    #ITENS[] = PRODUTOS | FILTER(@ESTOQUE 0 >) | SORT_BY("@PRECO")
     @TOTAL   = @PRODUTOS.PRECO.SUM()
 %%%%
 
