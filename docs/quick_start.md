@@ -243,7 +243,91 @@ $TITULO $RODAPE $>?  // returns the alphabetically greater string
 $TITULO $RODAPE $<?  // returns the alphabetically lesser string
 ```
 
-Available pipeline operators:
+### RETURN — extract specific values from the pipeline
+
+`RETURN` ends the pipeline and places chosen values on the stack.
+Accepts field names, variables of any type, or any Merlin expression:
+
+```merlin
+// Field names — extracted from each item
+$TITULOS[] = PRODUTOS | SORT_BY("$TITULO") | RETURN($TITULO)
+@PRECOS[]  = PRODUTOS | FILTER(@ESTOQUE 0 >) | RETURN(@PRECO)
+#FOTOS[]   = PRODUTOS | FILTER(@PRECO MEDIA >) | RETURN(#FOTO)
+
+// Multiple values of different types — one expression
+($MAIS_CARO , @TOTAL , #FILTRADOS[]) = PRODUTOS |
+    FILTER(@ESTOQUE 0 >) |
+    RETURN($TITULO , @PRECO , #ITEM)
+
+// Variables (not field names) — any type detected automatically
+PRODUTOS | EXECUTA_EACH(...) | RETURN(NOME_MAIS_CARO , TOTAL , RESUMO)
+
+// Computed expressions — Merlin way, no babysitting
+PRODUTOS | RETURN(@PRECO 1.1 * , $TITULO.UPPER() , TOTAL CONTAGEM /)
+
+// String literals — commas inside quotes are not separators
+PRODUTOS | RETURN("Beef, Pasta, Fish" , TOTAL)
+```
+
+### EXECUTA_EACH — initialize, iterate, finalize
+
+`EXECUTA_EACH` has three invisible phases separated by `&BEGIN_EACH`:
+
+```merlin
+PRATOS.EXECUTA_EACH(
+    // ── INITIALIZE — runs once
+    @TOTAL = 0
+    @MAIS_CARO = 0
+
+    &BEGIN_EACH(
+        // ── ITERATE — runs for each item
+        // ITEM = current dictionary (available automatically)
+        // IDX  = current index
+        @TOTAL += @ITEM.PRECO
+        #IF @ITEM.PRECO MAIS_CARO >
+            @MAIS_CARO = @ITEM.PRECO
+        #END_IF
+    )
+
+    // ── FINALIZE — runs once, after all iterations
+    @MEDIA = TOTAL CONTAGEM /
+)
+```
+
+Pipelines can be nested — a pipeline inside `EXECUTA_EACH` inside another pipeline.
+Merlin resolves each level independently, with isolated scopes for loop variables (`ITEM`, `IDX`).
+All other variables belong to the outer scope naturally — no explicit transfer needed.
+
+```merlin
+// Triple nested pipeline — all inside the template, all in RAM
+#RESUMO[] = CATEGORIAS |
+    EXECUTA_EACH(
+        #RESUMO_CAT[] = #[]
+        &BEGIN_EACH(
+            #CAT = ITEM
+            PRATOS |
+                FILTER(@CATEGORIA_ID @CAT.ID ==) |   // pipeline inside pipeline
+                EXECUTA_EACH(
+                    @TOTAL_CAT = 0
+                    &BEGIN_EACH(
+                        @TOTAL_CAT += @ITEM.PRECO     // third level
+                    )
+                )
+            &END_PIPELINE   // documentation marker — no effect on execution
+            #RESUMO_CAT[+] = { "CATEGORIA" : CAT.TITULO , "TOTAL" : TOTAL_CAT }
+        )
+    ) |
+    RETURN(#RESUMO_CAT)
+```
+
+### Flow control markers
+
+```merlin
+&END_PIPELINE          // documentation only — marks end of a pipeline block
+&NO_STACK()            // tells EXECUTA_EACH not to leave the vector on the stack
+```
+
+### Available pipeline operators
 
 | Operator | Description |
 |----------|-------------|
@@ -253,7 +337,8 @@ Available pipeline operators:
 | `SORT_BY("@FIELD")` | Sort ascending by field or expression |
 | `SORT_BY_DESC("@FIELD")` | Sort descending |
 | `EXECUTA(programa)` | Run full Merlin program on the vector |
-| `EXECUTA_EACH(programa)` | Run Merlin program on each item |
+| `EXECUTA_EACH(...)` | Initialize / iterate / finalize pattern |
+| `RETURN(a , b , c)` | Extract values — fields, variables or expressions |
 | `ATUALIZA` | Write result back to original variable |
 
 ---
@@ -271,9 +356,9 @@ Available pipeline operators:
 ### #FOR BY N — iterate in chunks
 
 ```merlin
-{{%% #FOR LINHAS in FOTOS BY 3 %%}}
+{{%% #FOR LINHA in FOTOS BY 3 %%}}
     <div class="row">
-        {{%% #FOR FOTO in LINHAS %%}}
+        {{%% #FOR FOTO in LINHA %%}}
             <div class="col-4">
                 <img src="{{{{ FOTO.IMAGEM_THUMB }}}}" alt="{{{{ FOTO.TITULO }}}}">
             </div>
