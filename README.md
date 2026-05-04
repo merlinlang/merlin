@@ -128,6 +128,10 @@ And rendering is just as simple:
 @TOTAL = @PRODUTOS.PRECO.SUM()   // SUM → VET_SUM automatically
 @MEDIA = @PRODUTOS.PRECO.AVG()
 @MAX   = @PRODUTOS.PRECO.MAX()
+
+or simple as :
+
+(@TOTAL, @MEDIA, @MAX) = @PRODUTOS.PRECO.SUM().AVG().MAX()
 ```
 
 ---
