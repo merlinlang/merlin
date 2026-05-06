@@ -124,14 +124,23 @@ And rendering is just as simple:
 // Modules work in pipelines too — PRODUTO passed as current item:
 {{{{ PRODUTOS | MENU_CARD(1) }}}}
 
-// Automatic operator promotion — Merlin knows PRODUTOS is a vector:
+## Operator promotion
+
+Merlin knows when to promote operators automatically:
+
+// Verbose — all equivalent
 @TOTAL = @PRODUTOS.PRECO.SUM()   // SUM → VET_SUM automatically
 @MEDIA = @PRODUTOS.PRECO.AVG()
 @MAX   = @PRODUTOS.PRECO.MAX()
 
-or simple as :
-
+// Compact — same result
 (@TOTAL, @MEDIA, @MAX) = @PRODUTOS.PRECO.SUM().AVG().MAX()
+
+## Pipelines
+
+See [examples/clientes_premium.merlin](examples/clientes_premium.merlin)
+and [reviews/clientes_premium_review.md](reviews/clientes_premium_review.md)
+for a complete walkthrough — 3 vectors, nested pipelines, no SQL.
 ```
 
 ---
