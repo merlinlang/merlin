@@ -1,0 +1,114 @@
+%%%% 
+
+    // ============================================================
+    // Merlin Language — Example: Clientes Premium
+    // Cross-reference 3 vectors, nested pipelines, no SQL
+    // https://github.com/merlinlang/merlin
+    // ============================================================
+    
+    // ---- Data ----
+    
+    #CLIENTES[] = #[
+        { "ID" : 1 , "NOME" : "Ana Silva"      , "CIDADE" : "Lisboa"  } ,
+        { "ID" : 2 , "NOME" : "Bruno Costa"    , "CIDADE" : "Porto"   } ,
+        { "ID" : 3 , "NOME" : "Carla Mendes"   , "CIDADE" : "Coimbra" } ,
+        { "ID" : 4 , "NOME" : "David Nunes"    , "CIDADE" : "Faro"    } ,
+        { "ID" : 5 , "NOME" : "Eva Rodrigues"  , "CIDADE" : "Braga"   } ,
+        { "ID" : 6 , "NOME" : "Fátima Lopes"   , "CIDADE" : "Évora"   }
+    ]
+    
+    #PRODUTOS[] = #[
+        { "ID" : 1 , "NOME" : "Francesinha"     , "PRECO" : 14.50 , "CATEGORIA" : "Pratos"  } ,
+        { "ID" : 2 , "NOME" : "Bacalhau à Brás" , "PRECO" : 18.00 , "CATEGORIA" : "Pratos"  } ,
+        { "ID" : 3 , "NOME" : "Caldo Verde"     , "PRECO" :  6.50 , "CATEGORIA" : "Sopas"   } ,
+        { "ID" : 4 , "NOME" : "Pastel de Nata"  , "PRECO" :  1.50 , "CATEGORIA" : "Doces"   } ,
+        { "ID" : 5 , "NOME" : "Vinho Verde"     , "PRECO" :  4.00 , "CATEGORIA" : "Bebidas" } ,
+        { "ID" : 6 , "NOME" : "Super Bock"      , "PRECO" :  2.50 , "CATEGORIA" : "Bebidas" } ,
+        { "ID" : 7 , "NOME" : "Arroz de Pato"   , "PRECO" : 16.00 , "CATEGORIA" : "Pratos"  } ,
+        { "ID" : 8 , "NOME" : "Pudim Abade"     , "PRECO" :  5.00 , "CATEGORIA" : "Doces"   }
+    ]
+    
+    #PEDIDOS[] = #[
+        // Ana Silva — total 41.50
+        { "ID" :  1 , "ID_CLIENTE" : 1 , "ID_PRODUTO" : 1 , "VALOR" : 14.50 , "DATA" : "2026-01-10" } ,
+        { "ID" :  2 , "ID_CLIENTE" : 1 , "ID_PRODUTO" : 5 , "VALOR" :  4.00 , "DATA" : "2026-01-10" } ,
+        { "ID" :  3 , "ID_CLIENTE" : 1 , "ID_PRODUTO" : 2 , "VALOR" : 18.00 , "DATA" : "2026-02-14" } ,
+        { "ID" :  4 , "ID_CLIENTE" : 1 , "ID_PRODUTO" : 8 , "VALOR" :  5.00 , "DATA" : "2026-02-14" } ,
+        // Bruno Costa — total 22.50
+        { "ID" :  5 , "ID_CLIENTE" : 2 , "ID_PRODUTO" : 7 , "VALOR" : 16.00 , "DATA" : "2026-01-20" } ,
+        { "ID" :  6 , "ID_CLIENTE" : 2 , "ID_PRODUTO" : 3 , "VALOR" :  6.50 , "DATA" : "2026-01-20" } ,
+        // Carla Mendes — total 17.50
+        { "ID" :  7 , "ID_CLIENTE" : 3 , "ID_PRODUTO" : 1 , "VALOR" : 14.50 , "DATA" : "2026-02-01" } ,
+        { "ID" :  8 , "ID_CLIENTE" : 3 , "ID_PRODUTO" : 4 , "VALOR" :  1.50 , "DATA" : "2026-02-01" } ,
+        { "ID" :  9 , "ID_CLIENTE" : 3 , "ID_PRODUTO" : 4 , "VALOR" :  1.50 , "DATA" : "2026-02-01" } ,
+        // David Nunes — total 24.50
+        { "ID" : 10 , "ID_CLIENTE" : 4 , "ID_PRODUTO" : 2 , "VALOR" : 18.00 , "DATA" : "2026-03-05" } ,
+        { "ID" : 11 , "ID_CLIENTE" : 4 , "ID_PRODUTO" : 5 , "VALOR" :  4.00 , "DATA" : "2026-03-05" } ,
+        { "ID" : 12 , "ID_CLIENTE" : 4 , "ID_PRODUTO" : 6 , "VALOR" :  2.50 , "DATA" : "2026-03-05" } ,
+        // Eva Rodrigues — total 39.00
+        { "ID" : 13 , "ID_CLIENTE" : 5 , "ID_PRODUTO" : 7 , "VALOR" : 16.00 , "DATA" : "2026-03-15" } ,
+        { "ID" : 14 , "ID_CLIENTE" : 5 , "ID_PRODUTO" : 2 , "VALOR" : 18.00 , "DATA" : "2026-03-15" } ,
+        { "ID" : 15 , "ID_CLIENTE" : 5 , "ID_PRODUTO" : 8 , "VALOR" :  5.00 , "DATA" : "2026-03-15" } ,
+        // Fátima Lopes — total 35.00
+        { "ID" : 16 , "ID_CLIENTE" : 6 , "ID_PRODUTO" : 2 , "VALOR" : 18.00 , "DATA" : "2026-03-20" } ,
+        { "ID" : 17 , "ID_CLIENTE" : 6 , "ID_PRODUTO" : 7 , "VALOR" : 16.00 , "DATA" : "2026-03-20" } ,
+        { "ID" : 18 , "ID_CLIENTE" : 6 , "ID_PRODUTO" : 4 , "VALOR" :  1.00 , "DATA" : "2026-03-21" }
+    ]
+    
+    // ---- Expected totals ----
+    // Ana Silva      = 14.50 + 4.00 + 18.00 + 5.00          = 41.50
+    // Bruno Costa    = 16.00 + 6.50                          = 22.50
+    // Carla Mendes   = 14.50 + 1.50 + 1.50                  = 17.50
+    // David Nunes    = 18.00 + 4.00 + 2.50                  = 24.50
+    // Eva Rodrigues  = 16.00 + 18.00 + 5.00                 = 39.00
+    // Fátima Lopes   = 18.00 + 16.00 + 1.00                 = 35.00
+    // MÉDIA          = (41.50+22.50+17.50+24.50+39.00+35.00) / 6 = 30.00
+    // PREMIUM (>30): Ana Silva (41.50), Eva Rodrigues (39.00), Fátima Lopes (35.00)
+    
+    // ---- Pipeline ----
+    
+    #CLIENTES_PREMIUM[] = CLIENTES |
+    
+        // Total spent per client — cross-reference CLIENTES × PEDIDOS
+        ADD_FIELD(@TOTAL_GASTO = @PEDIDOS.VALOR.FILTER(@ID_CLIENTE @ID ==).SUM()) |
+    
+        // Number of orders
+        ADD_FIELD(@NUM_PEDIDOS = PEDIDOS.FILTER(@ID_CLIENTE @ID ==).RETURN(#LEN(ITEMS))) |
+    
+        // Average ticket per visit
+        ADD_FIELD(@TICKET_MEDIO = @TOTAL_GASTO @NUM_PEDIDOS /) |
+    
+        // Favourite product — nested pipeline PEDIDOS × PRODUTOS
+        ADD_FIELD(
+            @PRODUTO_FAVORITO_ID = PEDIDOS |
+                FILTER(@ID_CLIENTE @ID ==) |
+                ADD_FIELD(@QTD = @PEDIDOS.ID_PRODUTO.FILTER(@ID_PRODUTO @ID_PRODUTO ==).RETURN(#LEN(ITEMS))) |
+                SORT_DESC |
+                RETURN(@PEDIDOS[0].ID_PRODUTO)
+        ) |
+    
+        // Premium only — above average spending
+        FILTER(@TOTAL_GASTO @TOTAL_GASTO.AVG() >) |
+    
+        // Sort by highest spender
+        SORT_BY_DESC(@TOTAL_GASTO) |
+    
+        // Favourite product name — cross-reference PRODUTOS
+        ADD_FIELD(
+            $NOME_PRODUTO_FAV = PRODUTOS |
+                FILTER(@PRODUTOS[IDX].ID @PRODUTO_FAVORITO_ID ==) |
+                RETURN(PRODUTOS[0].NOME)
+        )
+
+    &END_PIPELINE
+    
+    // ---- Output ----
+    
+    #DIC_VET_SHOW("CLIENTES_PREMIUM")
+    
+    // Expected result:
+    // [0] Ana Silva      TOTAL=41.50  PEDIDOS=4  TICKET=10.375  FAV=Francesinha
+    // [1] Eva Rodrigues  TOTAL=39.00  PEDIDOS=3  TICKET=13.000  FAV=Arroz de Pato
+    // [2] Fátima Lopes   TOTAL=35.00  PEDIDOS=3  TICKET=11.667  FAV=Bacalhau à Brás
+
+%%%%
