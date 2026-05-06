@@ -210,3 +210,72 @@ In Merlin — one pipeline expression. No database. No queries. Everything in RA
 **Cross-reference** — three vectors interacting without explicit JOIN syntax.
 
 **Context-aware AVG** — `@TOTAL_GASTO.AVG()` uses the full vector, not the current item.
+
+---
+
+## Side by side — Merlin vs SQL
+
+### SQL
+
+```sql
+SELECT
+    c.nome,
+    SUM(p.valor)                    AS total_gasto,
+    COUNT(p.id)                     AS num_pedidos,
+    SUM(p.valor) / COUNT(p.id)      AS ticket_medio,
+    (
+        SELECT pr.nome
+        FROM produtos pr
+        WHERE pr.id = (
+            SELECT p2.id_produto
+            FROM pedidos p2
+            WHERE p2.id_cliente = c.id
+            GROUP BY p2.id_produto
+            ORDER BY COUNT(*) DESC
+            LIMIT 1
+        )
+    )                               AS nome_produto_fav
+FROM clientes c
+JOIN pedidos p ON p.id_cliente = c.id
+WHERE (
+    SELECT SUM(p3.valor)
+    FROM pedidos p3
+    WHERE p3.id_cliente = c.id
+) > (
+    SELECT AVG(total) FROM (
+        SELECT SUM(p4.valor) AS total
+        FROM pedidos p4
+        GROUP BY p4.id_cliente
+    ) AS sub
+)
+GROUP BY c.id, c.nome
+ORDER BY total_gasto DESC
+```
+
+### Merlin
+
+```merlin
+#CLIENTES_PREMIUM[] = CLIENTES |
+    ADD_FIELD(@TOTAL_GASTO = @PEDIDOS.VALOR.FILTER(@ID_CLIENTE @ID ==).SUM()) |
+    ADD_FIELD(@NUM_PEDIDOS = PEDIDOS.FILTER(@ID_CLIENTE @ID ==).RETURN(#LEN(ITEMS))) |
+    ADD_FIELD(@TICKET_MEDIO = @TOTAL_GASTO @NUM_PEDIDOS /) |
+    ADD_FIELD(
+        @PRODUTO_FAVORITO_ID = PEDIDOS |
+            FILTER(@ID_CLIENTE @ID ==) |
+            ADD_FIELD(@QTD = @PEDIDOS.ID_PRODUTO.FILTER(@ID_PRODUTO @ID_PRODUTO ==).RETURN(#LEN(ITEMS))) |
+            SORT_DESC |
+            RETURN(@PEDIDOS[0].ID_PRODUTO)
+    ) |
+    FILTER(@TOTAL_GASTO @TOTAL_GASTO.AVG() >) |
+    SORT_BY_DESC(@TOTAL_GASTO) |
+    ADD_FIELD(
+        $NOME_PRODUTO_FAV = PRODUTOS |
+            FILTER(@PRODUTOS[IDX].ID @PRODUTO_FAVORITO_ID ==) |
+            RETURN(PRODUTOS[0].NOME)
+    )
+&END_PIPELINE
+```
+
+Same result. No database. No queries. Everything in RAM.
+
+Merlin Language - RPN stack language
