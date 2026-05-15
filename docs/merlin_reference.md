@@ -36,9 +36,30 @@ pilha_vetores_dicionarios
 - LHS não sabe o que vem do RHS; RHS só precisa deixar o resultado na pilha certa
 - Se quiser usar um valor mais do que uma vez, guarde numa variável
 
-- Operadores em Merlin não validam previamente a pilha.
-- Eles consomem o que existe; o que não existe é resolvido pelo valor default da pilha.
+## Segurança da Pilha e Valores Padrão
 
+Os operadores da Merlin não fazem validação prévia da pilha.
+
+Eles sempre executam, consumindo os valores que estiverem disponíveis.  
+Se algum valor necessário estiver ausente, a própria pilha resolve isso usando o valor padrão do tipo correspondente.
+
+Valores padrão:
+
+- Número ausente → `0`
+- String ausente → `""`
+- Vetor ausente → `[]`
+- Dicionário ausente → `{}`
+
+Isso significa que valores ausentes não são tratados como erro por padrão; eles são interpretados como valores neutros.
+
+Exemplo:
+
+```merlin
+#IF .NOT. FORBIDDEN_CREATE
+    // executa quando FORBIDDEN_CREATE não existe,
+    // porque valores numéricos ausentes resolvem para 0,
+    // e NOT 0 retorna 1
+#END_IF
 ---
 
 ## Atribuição
