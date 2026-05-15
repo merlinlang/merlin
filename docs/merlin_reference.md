@@ -36,6 +36,9 @@ pilha_vetores_dicionarios
 - LHS não sabe o que vem do RHS; RHS só precisa deixar o resultado na pilha certa
 - Se quiser usar um valor mais do que uma vez, guarde numa variável
 
+- Operadores em Merlin não validam previamente a pilha.
+- Eles consomem o que existe; o que não existe é resolvido pelo valor default da pilha.
+
 ---
 
 ## Atribuição
