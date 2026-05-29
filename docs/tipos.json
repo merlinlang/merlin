@@ -1,0 +1,68 @@
+{
+  "@": {
+    "nome": "numero",
+    "descricao": "Valor numérico usado pela pilha de números.",
+    "exemplos": [
+      "10",
+      "25.5",
+      "0.1375"
+    ]
+  },
+  "@[]": {
+    "nome": "vetor_numeros",
+    "descricao": "Vetor de valores numéricos usado pela pilha de vetores numéricos.",
+    "exemplos": [
+      "[1, 2, 3]",
+      "[0.1, 0.2, 0.3]"
+    ]
+  },
+  "$": {
+    "nome": "string",
+    "descricao": "Texto usado pela pilha de strings.",
+    "exemplos": [
+      "\"Merlin\"",
+      "\"27/05/2026\"",
+      "\"R$\""
+    ]
+  },
+  "$[]": {
+    "nome": "vetor_strings",
+    "descricao": "Vetor de textos usado pela pilha de vetores de strings.",
+    "exemplos": [
+      "[\"a\", \"b\", \"c\"]",
+      "[\"card\", \"table\", \"flex\"]"
+    ]
+  },
+  "#": {
+    "nome": "dicionario",
+    "descricao": "Dicionário/chave-valor usado pela pilha de dicionários.",
+    "exemplos": [
+      "{ \"NOME\": \"Merlin\", \"IDADE\": 1 }"
+    ]
+  },
+  "#[]": {
+    "nome": "vetor_dicionarios",
+    "descricao": "Vetor de dicionários usado pela pilha de vetores de dicionários.",
+    "exemplos": [
+      "[{ \"ID\": 1 }, { \"ID\": 2 }]"
+    ]
+  },
+  "&": {
+    "nome": "operador_merlin",
+    "descricao": "Operador interno da Merlin, geralmente usado para debug, escopos, execução de módulos, include, input/output e controle do runtime.",
+    "exemplos": [
+      "&DEBUG_MERLIN",
+      "&PRINT(\"Teste\")",
+      "&MOSTRA_PILHA_STRING"
+    ]
+  },
+  "~dt": {
+    "nome": "operador_data_hora",
+    "descricao": "Namespace dos operadores de datas e horas. Internamente usa pilhas de números e strings.",
+    "exemplos": [
+      "~dt<TODAY>",
+      "~dt<FMT_BR>(46100)",
+      "~dt<NOW_STR>"
+    ]
+  }
+}
