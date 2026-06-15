@@ -1742,3 +1742,270 @@ VENDAS_ANO.EXECUTA(1.2 *).ATUALIZA()
 // Merlin sabe que VENDAS_ANO é vetor → multiplica cada elemento → deixa vetor na pilha
 // VET_SUM soma tudo → resultado em pilha_numeros → atribuído a @TOTAL
 ```
+
+# Parâmetros Nomeados em Módulos Merlin
+
+## Visão Geral
+
+A Merlin suporta dois estilos de passagem de parâmetros para módulos:
+
+**Estilo posicional** — clássico, usando a pilha RPN:
+```merlin
+{{{{ RESTAURANTE.MENU_DESTAQUE(PRODUTO "md") }}}}
+```
+
+**Estilo misto** — posicional + nomeados opcionais, separados por vírgula:
+```merlin
+{{{{ RESTAURANTE.MENU_PREMIUM(PRODUTO, "md", $COR_FUNDO="#1a1a2e", $COR_TEXTO="#fff") }}}}
+```
+
+As duas formas coexistem e são retrocompatíveis — módulos existentes sem vírgula continuam a funcionar exactamente como antes.
+
+---
+
+## Regras
+
+### 1. A vírgula activa o modo de parâmetros nomeados
+
+Sem vírgula — comportamento 100% original:
+```merlin
+MODULO(MODEL SIZE 1 0)
+```
+
+Com vírgula — cada item é processado individualmente:
+```merlin
+MODULO(MODEL, SIZE, @USA_PRECO=1, $COR_FUNDO="#1a1a2e")
+```
+
+### 2. Itens sem `=` são posicionais (vão para a pilha)
+
+```merlin
+MODULO(MODEL, SIZE, 0)
+//      ↑      ↑    ↑
+//   pilha  pilha  pilha  — ordem preservada
+```
+
+### 3. Itens com `=` são nomeados (vão para o escopo `_PARAMETROS_`)
+
+```merlin
+MODULO(MODEL, SIZE, @USA_PRECO=1, $COR_FUNDO="#1a1a2e")
+//                  ↑              ↑
+//      _PARAMETROS_::USA_PRECO=1  _PARAMETROS_::COR_FUNDO="#1a1a2e"
+```
+
+O prefixo de tipo (`@`/`$`/`#`) é obrigatório e define o tipo da variável:
+- `@NOME=valor` — variável numérica
+- `$NOME=valor` — variável string
+- `#NOME=valor` — variável dicionário
+
+### 4. Mistura livre de posicionais e nomeados
+
+```merlin
+MODULO(MODEL, SIZE, 1, @USA_DESCRICAO=0, $COR_FUNDO="#1a1a2e")
+//      pos    pos  pos  nomeado           nomeado
+```
+
+Os posicionais são empilhados na ordem em que aparecem. Os nomeados vão para `_PARAMETROS_` independentemente da posição.
+
+---
+
+## Leitura dentro do módulo
+
+### Parâmetros posicionais — `&ULTIMA_PILHA`
+
+```merlin
+$SIZE  = &ULTIMA_PILHA
+#MODEL = &ULTIMA_PILHA
+```
+
+### Parâmetros nomeados — `#DEFINED` + `_PARAMETROS_::`
+
+```merlin
+$COR_FUNDO = #IF $DEFINED("_PARAMETROS_::COR_FUNDO") :: _PARAMETROS_::COR_FUNDO #ELSE ""
+@USA_PRECO = #IF @DEFINED("_PARAMETROS_::USA_PRECO") :: _PARAMETROS_::USA_PRECO #ELSE 1
+```
+
+O `#DEFINED`/`@DEFINED`/`$DEFINED` verifica se o parâmetro foi passado nesta chamada específica. O `#ELSE` define o valor por omissão quando o parâmetro não foi passado.
+
+### Fechar o escopo `_PARAMETROS_`
+
+Depois de ler todos os parâmetros nomeados, fecha o escopo antes do fim de `%%%%`:
+
+```merlin
+&END_LOCAL_ONLY_SCOPE(_PARAMETROS_)
+```
+
+ou com aspas:
+
+```merlin
+&END_LOCAL_ONLY_SCOPE("_PARAMETROS_")
+```
+
+Se o dev esquecer, o sistema fecha automaticamente no final da chamada — mas fechar explicitamente é a boa prática.
+
+---
+
+## Exemplo completo — `RESTAURANTE.MENU_PREMIUM`
+
+Um módulo de card visual com parâmetros de cor opcionais:
+
+```merlin
+&CREATE_MODULE("RESTAURANTE.MENU_PREMIUM") ::
+%%%%
+    // RESTAURANTE.MENU_PREMIUM( model size )
+    // Parâmetros opcionais:
+    //   $COR_FUNDO  = cor de fundo do card (ex: "#1a1a2e")
+    //   $COR_TEXTO  = cor do texto          (ex: "#ffffff")
+    $SIZE  = &ULTIMA_PILHA
+    #MODEL = &ULTIMA_PILHA
+    ($COLS, $STYLE) = HTML.COLS_ANALISA_SIZE(SIZE)
+    $COR_FUNDO = #IF $DEFINED("_PARAMETROS_::COR_FUNDO") :: _PARAMETROS_::COR_FUNDO #ELSE ""
+    $COR_TEXTO = #IF $DEFINED("_PARAMETROS_::COR_TEXTO") :: _PARAMETROS_::COR_TEXTO #ELSE ""
+    &END_LOCAL_ONLY_SCOPE(_PARAMETROS_)
+    $STYLE_CARD   = #IF COR_FUNDO .AND. COR_TEXTO :: $$("background: ${COR_FUNDO}; color: ${COR_TEXTO};") #ELSE ""
+    $STYLE_TITULO = #IF COR_TEXTO :: $$("color: ${COR_TEXTO};") #ELSE ""
+%%%%
+<div class="{{{{ COLS }}}}">
+  <div class="card-premium h-100" style="{{{{ STYLE_CARD }}}}">
+    <div class="card-premium-img">
+      {{{{ HTML.PICTURE_RENDER_IMAGEM(MODEL) }}}}
+    </div>
+    <div class="card-premium-body">
+      {{%% #IF MODEL.TITULO %%}}
+        <h5 class="text-center cursivo card-premium-titulo" style="{{{{ STYLE_TITULO }}}}">
+          <minimo>{{{{ MODEL.TITULO | SANITIZE }}}}</minimo>
+        </h5>
+      {{%% #END_IF %%}}
+      {{%% #IF MODEL.RODAPE %%}}
+        <h6 class="text-center card-premium-rodape" style="{{{{ STYLE_TITULO }}}}">
+          <minimo>{{{{ MODEL.RODAPE | SANITIZE }}}}</minimo>
+        </h6>
+      {{%% #END_IF %%}}
+      {{%% #IF @MODEL.PRECO 0.001 > %%}}
+        <h5 class="text-center card-premium-preco" style="{{{{ STYLE_TITULO }}}}">
+          <minimo><strong>{{{{ $FORMATA_MOEDA(@MODEL.PRECO) }}}}</strong></minimo>
+        </h5>
+      {{%% #END_IF %%}}
+    </div>
+  </div>
+</div>
+&END_MODULE()    //   Final do módulo  :  RESTAURANTE.MENU_PREMIUM
+```
+
+### Formas de chamar `RESTAURANTE.MENU_PREMIUM`
+
+```merlin
+// fundo do site, sem parâmetros nomeados — comportamento original
+{{{{ RESTAURANTE.MENU_PREMIUM(PRODUTO "md") }}}}
+
+// fundo escuro, texto claro
+{{{{ RESTAURANTE.MENU_PREMIUM(PRODUTO, "md", $COR_FUNDO="#1a1a2e", $COR_TEXTO="#f0f0f0") }}}}
+
+// fundo vinho, tamanho grande
+{{{{ RESTAURANTE.MENU_PREMIUM(PRODUTO, "lg", $COR_FUNDO="#8B0000", $COR_TEXTO="#fff") }}}}
+
+// cor vinda de variável do cliente — tema configurável
+{{{{ RESTAURANTE.MENU_PREMIUM(PRODUTO, "sm", $COR_FUNDO=$$CONFIG.COR_TEMA, $COR_TEXTO=$$CONFIG.COR_TEXTO) }}}}
+```
+
+---
+
+## Funções auxiliares
+
+### `@DEFINED` / `$DEFINED` / `#DEFINED`
+
+Verifica se existe uma variável de determinado tipo com o nome indicado.
+
+```merlin
+@DEFINED("_PARAMETROS_::USA_PRECO")   // verifica se existe variável numérica
+$DEFINED("_PARAMETROS_::COR_FUNDO")   // verifica se existe variável string
+#DEFINED("_PARAMETROS_::CONFIG")      // verifica se existe variável dicionário
+```
+
+Devolve `1` se existe, `0` se não existe.
+
+### `&END_LOCAL_ONLY_SCOPE(nome)`
+
+Remove um escopo específico da pilha de escopos sem fechar os escopos filhos. Diferente de `&END_LOCAL_SCOPE` (fecha o topo) e de `&POP_LOCAL_NAMED_SCOPE` (fecha tudo até ao scope indicado).
+
+Usado especificamente para fechar `_PARAMETROS_` depois de ler os parâmetros nomeados.
+
+---
+
+## Avaliação de strings — `$$(expressão)`
+
+Recurso frequentemente usado com parâmetros nomeados para construir strings CSS ou URLs dinâmicas.
+
+### Sintaxe
+
+```merlin
+$$(expressão)              // avalia expressão, resultado é string
+$AVALIAR_STRING(expressão) // forma verbosa equivalente
+expressão | <$>            // forma pipeline
+```
+
+### Dentro da string avaliada
+
+```merlin
+$$("texto ${EXPR} texto")   // ${...} avalia qualquer expressão Merlin
+$$("texto $$NOME texto")    // $$NOME — indireção: busca variável cujo nome está em NOME
+$$("texto @@NOME texto")    // @@NOME — indireção numérica convertida para string
+```
+
+### Exemplos
+
+```merlin
+// CSS dinâmico com parâmetros nomeados
+$STYLE = $$("background: ${COR_FUNDO}; color: ${COR_TEXTO}; opacity: ${@@OPACIDADE}%;")
+
+// URL com campos de dicionário
+$URL = $$("/$$cliente.slug/produto/${@@MODEL.ID}/")
+
+// Indireção — o nome do campo vem de uma variável
+$CAMPO = "TITULO"
+$VALOR = $$("item: $$CAMPO resto")   // → "item: Bacalhau resto" (busca a variável TITULO)
+
+// Expressão completa dentro de ${}
+$PRECO_FORMATADO = $$("Preço: ${$FORMATA_MOEDA(@@MODEL.PRECO)}")
+
+// Indireção dupla — campo do dicionário contém o nome de outra variável
+$$("style='background: ${$$CONFIG.COR_FUNDO};'")
+```
+
+### Distinção importante
+
+```merlin
+$$("texto ${NOME} resto")    // valor de NOME (acesso directo)
+$$("texto $$NOME resto")     // valor da variável cujo nome está em NOME (indireção)
+```
+
+O `{` sozinho (sem `$`) nunca é avaliado — copia literal. Isso protege automaticamente `{{{{ }}}}` e `{{%% %%}}` da sintaxe Merlin quando `$$()` é usado em templates completas.
+
+---
+
+## Padrão recomendado para módulos com parâmetros opcionais
+
+```merlin
+&CREATE_MODULE("NAMESPACE.NOME_MODULO") ::
+%%%%
+    // NAMESPACE.NOME_MODULO( param1 param2 )
+    // Parâmetros opcionais:
+    //   @PARAM_NUMERICO = descrição  (default: valor)
+    //   $PARAM_STRING   = descrição  (default: "valor")
+
+    // 1. Posicionais primeiro — ordem da pilha
+    $PARAM2 = &ULTIMA_PILHA
+    #PARAM1 = &ULTIMA_PILHA
+
+    // 2. Nomeados — sempre com #DEFINED + default
+    @PARAM_NUMERICO = #IF @DEFINED("_PARAMETROS_::PARAM_NUMERICO") :: _PARAMETROS_::PARAM_NUMERICO #ELSE 1
+    $PARAM_STRING   = #IF $DEFINED("_PARAMETROS_::PARAM_STRING")   :: _PARAMETROS_::PARAM_STRING   #ELSE ""
+
+    // 3. Fechar o escopo de parâmetros
+    &END_LOCAL_ONLY_SCOPE(_PARAMETROS_)
+
+    // 4. Processamento normal a partir daqui
+%%%%
+... HTML do módulo ...
+&END_MODULE()
+```
