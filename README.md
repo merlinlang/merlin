@@ -19,7 +19,7 @@ not because the logic belongs there, but because the template can't handle it.
 ```python
 # Django/Jinja2 — you end up doing this in the backend:
 for p in produtos:
-    p['total'] = p['preco'] * p['estoque']   # create computed field
+    p['total'] = p['preco'] * p['estoque']
 produtos_filtrados = [p for p in produtos if p['estoque'] > 0]
 produtos_ordenados = sorted(produtos_filtrados, key=lambda p: p['total'])
 context['produtos'] = produtos_ordenados
@@ -31,21 +31,19 @@ With Merlin, the template handles it — and updates PRODUTOS in-place:
 PRODUTOS | FILTER(@ESTOQUE 0 >) | ADD_FIELD(@TOTAL = @PRECO @ESTOQUE *) | SORT_BY("@TOTAL") | ATUALIZA
 ```
 
-And rendering is just as simple:
+Rendering is equally direct:
 
 ```merlin
-// Merlin — explicit loop in template:
+// Explicit loop:
 {{%% #FOR PRODUTO in PRODUTOS %%}}
     {{{{ HTML.MENU_CARD(PRODUTO) }}}}
 {{%% #END_FOR %%}}
 
-// Merlin using pipeline — same result:
+// Pipeline — same result:
 {{{{ PRODUTOS | HTML.MENU_CARD }}}}
 
-// or without the prefix — Merlin resolves HTML.MENU_CARD automatically:
+// Prefix optional — Merlin resolves HTML.MENU_CARD automatically:
 {{{{ PRODUTOS | MENU_CARD }}}}
-// HTML.* and RESTAURANTE.* are priority namespaces in templates.
-// MENU_CARD resolves to HTML.MENU_CARD with no registration needed.
 ```
 
 ---
@@ -54,18 +52,20 @@ And rendering is just as simple:
 
 | Feature | Merlin | Jinja2 | Tera | Handlebars |
 |---------|:------:|:------:|:----:|:----------:|
-| Pipeline — any of 300+ operators and all lib modules | ✓ | ✗ | ✗ | ✗ |
+| Pipeline — 400+ operators and all lib modules | ✓ | ✗ | ✗ | ✗ |
 | Reusable modules (real functions) | ✓ | partial | partial | partial |
 | In-template computation | ✓ | limited | ✗ | ✗ |
-| Context hierarchy (CORE/SITE/CLIENT) | ✓ | ✗ | ✗ | ✗ |
+| Context hierarchy (CORE / SITE / CLIENT) | ✓ | ✗ | ✗ | ✗ |
 | Automatic operator promotion (SUM → VET_SUM) | ✓ | ✗ | ✗ | ✗ |
 | FOR BY N — iterate in chunks | ✓ | ✗ | ✗ | ✗ |
-| Libraries (FINANCE, STATS, HTML...) | ✓ | ✗ | ✗ | ✗ |
+| Built-in libraries (FINANCE, STATS, HTML) | ✓ | ✗ | ✗ | ✗ |
 | Zero backend for complex logic | ✓ | ✗ | ✗ | ✗ |
+| Named optional parameters | ✓ | ✗ | ✗ | ✗ |
+| Dynamic string evaluation with $$(expr) | ✓ | ✗ | ✗ | ✗ |
 
-> The pipeline column deserves emphasis: any of the 300+ built-in operators,
-> any module from any library (HTML, FINANCE, RESTAURANTE...) and any module
-> you create — all work in the pipeline automatically. No registration needed.
+> Any of the 400+ built-in operators, any module from any library (HTML, FINANCE,
+> RESTAURANTE) and any module you create — all work in pipelines automatically.
+> No registration needed.
 
 ---
 
@@ -78,9 +78,9 @@ And rendering is just as simple:
     @TOTAL   = @PRODUTOS.PRECO.SUM()
 %%%%
 
-{{%% #FOR ITEM in ITENS %%}}        <!-- Merlin inline — no output (flow control) -->
+{{%% #FOR ITEM in ITENS %%}}             <!-- flow control — no output -->
     <div class="card">
-        <h5>{{{{ ITEM.TITULO }}}}</h5>   <!-- Merlin inline — outputs to HTML -->
+        <h5>{{{{ ITEM.TITULO }}}}</h5>   <!-- outputs to HTML -->
         <p>{{{{ $FORMATA_MOEDA(@ITEM.PRECO) }}}}</p>
     </div>
 {{%% #END_FOR %%}}
@@ -92,56 +92,61 @@ And rendering is just as simple:
 
 ```merlin
 &CREATE_MODULE("HTML.MENU_CARD") ::
-
 %%%%
     // HTML.MENU_CARD( model pedido )
     @PEDIDO = &ULTIMA_PILHA
     #MODEL  = &ULTIMA_PILHA
 %%%%
-
-    <div class="col-6 col-sm-4 col-lg-3 mb-4">
-        <div class="card h-100">
-            <a href="/{{{{ cliente.slug }}}}/produto/{{{{ model.id }}}}">
-                <h5>{{{{ MODEL.TITULO }}}}</h5>
-            </a>
-            {{%% #IF @MODEL.PRECO 0.001 > %%}}
-                <strong>{{{{ $FORMATA_MOEDA(@MODEL.PRECO) }}}}</strong>
-            {{%% #END_IF %%}}
-        </div>
+<div class="col-6 col-sm-4 col-lg-3 mb-4">
+    <div class="card h-100">
+        <a href="/{{{{ cliente.slug }}}}/produto/{{{{ model.id }}}}">
+            <h5>{{{{ MODEL.TITULO }}}}</h5>
+        </a>
+        {{%% #IF @MODEL.PRECO 0.001 > %%}}
+            <strong>{{{{ $FORMATA_MOEDA(@MODEL.PRECO) }}}}</strong>
+        {{%% #END_IF %%}}
     </div>
-
+</div>
 &END_MODULE()
 ```
 
 ```merlin
-// Use anywhere — in templates, in other modules, in pipelines:
+// Use anywhere — templates, modules, pipelines:
 {{{{ HTML.MENU_CARD(PRODUTO 1) }}}}
 
-// In templates, HTML. and RESTAURANTE. prefixes are optional —
-// Merlin searches HTML.MENU_CARD first, then RESTAURANTE.MENU_CARD, then MENU_CARD:
+// HTML. and RESTAURANTE. prefixes are optional in templates:
 {{{{ MENU_CARD(PRODUTO 1) }}}}
 
-// Modules work in pipelines too — PRODUTO passed as current item:
+// Works in pipelines — PRODUTO passed as current item:
 {{{{ PRODUTOS | MENU_CARD(1) }}}}
+```
+
+---
 
 ## Operator promotion
 
 Merlin knows when to promote operators automatically:
 
-// Verbose — all equivalent
+```merlin
 @TOTAL = @PRODUTOS.PRECO.SUM()   // SUM → VET_SUM automatically
 @MEDIA = @PRODUTOS.PRECO.AVG()
 @MAX   = @PRODUTOS.PRECO.MAX()
 
-// Compact — same result
+// Compact — all at once:
 (@TOTAL, @MEDIA, @MAX) = @PRODUTOS.PRECO.SUM().AVG().MAX()
+```
+
+---
 
 ## Pipelines
 
-See [examples/clientes_premium.merlin](examples/clientes_premium.merlin)
+See [examples/clientes_premium.html](examples/clientes_premium.html)
 and [reviews/clientes_premium_review.md](reviews/clientes_premium_review.md)
-for a complete walkthrough — 3 vectors, nested pipelines, no SQL.
-```
+for a complete walkthrough — 3 vectors, nested pipelines, zero SQL.
+
+See [examples/cardapio_analise.html](examples/cardapio_analise.html)
+and [reviews/cardapio_analise_review.md](reviews/cardapio_analise_review.md)
+for a menu analysis that returns 6 values of different types from a single expression.
 
 ---
 
@@ -167,8 +172,7 @@ A restaurant can override any module just by defining it in its own layer:
 
 // CLIENTE (Pecado Capital) — custom version, no config needed
 &CREATE_MODULE("HTML.MENU_BOX") ::
-    GLOBAL::CORE::HTML.MENU_BOX()   // calls CORE version first
-    // then adds restaurant-specific logic
+    GLOBAL::CORE::HTML.MENU_BOX()   // calls CORE version first, then extends
 &END_MODULE()
 ```
 
@@ -176,20 +180,16 @@ A restaurant can override any module just by defining it in its own layer:
 
 ## Libraries — extensible by design
 
-Merlin modules live in `.html` files or in a database table.
-Load them at startup, use them everywhere:
-
 ```rust
-// Rust route — minimal, no business logic
+// Rust route — 2 lines, no business logic
 let mut calculator = setup_merlin_from_globals(state).await;
-load_modules(&mut calculator, db, lib_finance).await;
 processar_base_template("finance/tabela_price.html", &mut calculator, ..).await
 ```
 
 ```merlin
 %%%%
-    // Template — all logic here, zero backend
-    FINANCE.TABELA_PRICE(300000.0 0.75 360)   // 360 iterations, 4 vectors
+    // All logic here — zero backend
+    FINANCE.TABELA_PRICE(300000.0 0.75 360)
     FINANCE.PRICE_RESUMO
     FINANCE.PRICE_COMPARATIVO(0.65)
     FINANCE.PRICE_SIMULACAO_ANTECIPACAO(50000)
@@ -199,11 +199,53 @@ processar_base_template("finance/tabela_price.html", &mut calculator, ..).await
 {{{{ TABELA_HTML }}}}
 ```
 
-Available libraries (in this repository):
+Available libraries:
 
-- **[HTML](libs/html/)** — ready-made UI components (gallery, lightbox, menu cards)
+- **[HTML](libs/html/)** — UI components (gallery, lightbox, menu cards)
 - **[FINANCE](libs/finance/)** — Tabela Price, TIR, VPL
 - **[RESTAURANTE](libs/restaurante/)** — restaurant platform modules
+
+---
+
+## Named optional parameters
+
+Modules accept both positional and named parameters:
+
+```merlin
+// Positional — classic RPN style
+{{{{ RESTAURANTE.CARD_DESTAQUE_OPCOES(PRODUTO "md" 1 0) }}}}
+
+// Named — optional, any order, with defaults
+{{{{ RESTAURANTE.CARD_DESTAQUE_OPCOES(PRODUTO, "md", @USA_PRECO=1, $COR_FUNDO="#1a1a2e") }}}}
+
+// Mixed — positional first, named after
+{{{{ RESTAURANTE.MENU_PREMIUM(PRODUTO, "lg", $COR_FUNDO="#8B0000", $COR_TEXTO="#fff") }}}}
+```
+
+Inside the module, named parameters are read defensively:
+
+```merlin
+$COR_FUNDO = #IF $DEFINED("_PARAMETROS_::COR_FUNDO") :: _PARAMETROS_::COR_FUNDO #ELSE ""
+@USA_PRECO = #IF @DEFINED("_PARAMETROS_::USA_PRECO") :: _PARAMETROS_::USA_PRECO #ELSE 1
+&END_LOCAL_ONLY_SCOPE(_PARAMETROS_)
+```
+
+---
+
+## Dynamic string evaluation
+
+```merlin
+// $$(expression) evaluates any Merlin expression that leaves a string on the stack
+$STYLE = $$("background: ${COR_FUNDO}; color: ${COR_TEXTO}; opacity: ${@@OPACIDADE}%;")
+
+// ${EXPR} inside $$() evaluates any Merlin expression inline
+$URL   = $$("/${cliente.slug}/produto/${@@MODEL.ID}/")
+$LABEL = $$("${MODEL.TITULO} — ${$FORMATA_MOEDA(@@MODEL.PRECO)}")
+
+// Indirection — $$NOME reads the variable whose name is stored in NOME
+$CAMPO  = "TITULO"
+$VALOR  = $$("item: $$CAMPO")   // → "item: Bacalhau"
+```
 
 ---
 
@@ -212,12 +254,12 @@ Available libraries (in this repository):
 ```merlin
 &LOCAL_SCOPE
     @SUBTOTAL = PRECO 1.1 *    // local — dies here
-    @TOTAL += SUBTOTAL          // TOTAL is from outer scope — updated correctly
+    @TOTAL += SUBTOTAL          // TOTAL from outer scope — updated correctly
 &END_LOCAL_SCOPE
 // SUBTOTAL doesn't exist here ✓
 // TOTAL was updated ✓
 
-// Every #FOR loop automatically opens an isolated scope:
+// Every #FOR opens an isolated scope automatically:
 #FOR IDX, PRODUTO in PRODUTOS
     @TEMP = PRODUTO.PRECO 2 *   // local to this iteration
     @TOTAL += TEMP               // TOTAL from outer scope — correct
@@ -232,7 +274,6 @@ Available libraries (in this repository):
 RPN eliminates ambiguity. Every operation is explicit:
 
 ```merlin
-// PMT formula — readable step by step
 @TAXA_DECIMAL  = TAXA_MENSAL 100 /
 @FATOR         = 1 TAXA_DECIMAL +
 @POTENCIA_N    = FATOR NUM_PARCELAS ^
@@ -240,8 +281,8 @@ RPN eliminates ambiguity. Every operation is explicit:
 @DENOMINADOR   = POTENCIA_N 1 -
 @PRESTACAO     = VALOR NUMERADOR DENOMINADOR / *
 
-// Stacks are always empty after each statement — no garbage collector needed
-// If something remains on the stack, it's a programming error
+// Stacks are always empty after each statement.
+// If something remains, it is a programming error — caught immediately.
 ```
 
 ---
@@ -250,7 +291,7 @@ RPN eliminates ambiguity. Every operation is explicit:
 
 - **Language:** Rust
 - **In production:** Restaurant management platform, Viana do Castelo, Portugal
-- **Template files:** `.html` (VS Code friendly, syntax highlighting works)
+- **Template files:** `.html` (VS Code syntax highlighting works out of the box)
 - **Operators:** ~400 built-in (numbers, strings, dictionaries, dates, vectors)
 - **Architecture:** RPN + 6 stacks + module system + library loader
 
@@ -258,9 +299,11 @@ RPN eliminates ambiguity. Every operation is explicit:
 
 ## Documentation
 
-- [Getting Started](docs/quick_start.md) — concepts, syntax, first template
-- [Syntax Reference](docs/merlin_reference.md) — complete language reference
-- [Libraries](libs/) — ready-made modules
+- [Getting Started](docs/quick_start.md)
+- [Syntax Reference](docs/merlin_reference.md)
+- [Named Parameters](docs/merlin_parametros_nomeados.md)
+- [Libraries](libs/)
+- [Examples](examples/)
 
 ---
 
@@ -270,5 +313,5 @@ RPN eliminates ambiguity. Every operation is explicit:
 [marciosmall@merlinlang.com](mailto:marciosmall@merlinlang.com)
 [merlinlang.com](https://merlinlang.com)
 
-> *Started in 2023. Zero CS background. Zero compiler theory studied.  
-> Just 25 years of C/C++ and a HP 41CV calculator from 1983.*
+> *Started in 2023. Zero CS background. Zero compiler theory studied.*
+> *Just 25 years of C/C++ and a HP 41CV calculator from 1983.*
