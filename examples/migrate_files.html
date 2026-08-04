@@ -36,7 +36,7 @@ Then, across **6 different config files**, each with a different key name
 
     #REGS[] = JSON.FIND_ALL(JSON_PATH.$$MODEL)
 
-    REGS | ADD_FIELD(@ID = IDX 1 +) | ADD_FIELD($TITULO = ITEM.$$KEY_NAME) | DELETE_FIELD(KEY_NAME) | ATUALIZE
+    REGS | ADD_FIELD(@ID = IDX 1 +) | ADD_FIELD($TITLE = ITEM.$$KEY_NAME) | DELETE_FIELD(KEY_NAME) | ATUALIZE
 
     JSON.WRITE(JSON_PATH.$$MODEL, REGS)
 %%%%
