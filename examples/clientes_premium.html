@@ -70,25 +70,25 @@
     #CLIENTES_PREMIUM[] = CLIENTES |
     
         // Total spent per client — cross-reference CLIENTES × PEDIDOS
-        ADD_FIELD(@TOTAL_GASTO = @PEDIDOS.VALOR.FILTER(@ID_CLIENTE @ID ==).SUM()) |
+        ADD_FIELD(@TOTAL_GASTO = @PEDIDOS.VALOR.FILTER(@ITEM::ID_CLIENTE @CLIENTES::ITEM::ID ==).SUM()) |
     
         // Number of orders
-        ADD_FIELD(@NUM_PEDIDOS = PEDIDOS.FILTER(@ID_CLIENTE @ID ==).RETURN(#LEN(ITEMS))) |
+        ADD_FIELD(@NUM_PEDIDOS = PEDIDOS.FILTER(@ITEM.ID_CLIENTE @CLIENTES::ITEM::ID ==).RETURN(#LEN(ITEMS))) |
     
         // Average ticket per visit
-        ADD_FIELD(@TICKET_MEDIO = @TOTAL_GASTO @NUM_PEDIDOS /) |
+        ADD_FIELD(@TICKET_MEDIO = @ITEM.TOTAL_GASTO @ITEM.NUM_PEDIDOS /) |
     
         // Favourite product — nested pipeline PEDIDOS × PRODUTOS
         ADD_FIELD(
             @PRODUTO_FAVORITO_ID = PEDIDOS |
-                FILTER(@ID_CLIENTE @ID ==) |
-                ADD_FIELD(@QTD = @PEDIDOS.ID_PRODUTO.FILTER(@ID_PRODUTO @ID_PRODUTO ==).RETURN(#LEN(ITEMS))) |
+                FILTER(@ITEM.ID_CLIENTE @CLIENTES::ITEM.ID ==) |
+                ADD_FIELD(@QTD = @PEDIDOS.ID_PRODUTO.FILTER(@ITEM.ID_PRODUTO @BEFORE-PEDIDOS::ITEM.ID_PRODUTO ==).RETURN(#LEN(ITEMS))) |
                 SORT_DESC |
-                RETURN(@PEDIDOS[0].ID_PRODUTO)
+                RETURN(@ITEMS[0].ID_PRODUTO)
         ) |
     
         // Premium only — above average spending
-        FILTER(@TOTAL_GASTO @TOTAL_GASTO.AVG() >) |
+        FILTER(@ITEM.TOTAL_GASTO @ITEMS.TOTAL_GASTO.AVG() >) |   
     
         // Sort by highest spender
         SORT_BY_DESC(@TOTAL_GASTO) |
@@ -96,7 +96,7 @@
         // Favourite product name — cross-reference PRODUTOS
         ADD_FIELD(
             $NOME_PRODUTO_FAV = PRODUTOS |
-                FILTER(@PRODUTOS[IDX].ID @PRODUTO_FAVORITO_ID ==) |
+                FILTER(@ITEM.PRODUTOS[IDX].ID @CLIENTES::ITEM::PRODUTO_FAVORITO_ID ==) |
                 RETURN(PRODUTOS[0].NOME)
         )
 
